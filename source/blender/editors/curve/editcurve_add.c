@@ -158,6 +158,7 @@ Nurb *ED_curve_add_nurbs_primitive(
         bezt->h1 = bezt->h2 = HD_ALIGN;
         bezt->f1 = bezt->f2 = bezt->f3 = SELECT;
         bezt->radius = 1.0;
+        bezt->radius_normal = 1.0;
 
         bezt->vec[1][0] += -grid;
         bezt->vec[0][0] += -1.5f * grid;
@@ -171,7 +172,7 @@ Nurb *ED_curve_add_nurbs_primitive(
         bezt++;
         bezt->h1 = bezt->h2 = HD_ALIGN;
         bezt->f1 = bezt->f2 = bezt->f3 = SELECT;
-        bezt->radius = bezt->weight = 1.0;
+        bezt->radius = bezt->radius_normal = bezt->weight = 1.0;
 
         bezt->vec[0][0] = 0;
         bezt->vec[0][1] = 0;
@@ -196,7 +197,7 @@ Nurb *ED_curve_add_nurbs_primitive(
         for (a = 0; a < 4; a++, bp++) {
           bp->vec[3] = 1.0;
           bp->f1 = SELECT;
-          bp->radius = bp->weight = 1.0;
+          bp->radius = bp->radius_normal = bp->weight = 1.0;
         }
 
         bp = nu->bp;
@@ -233,7 +234,7 @@ Nurb *ED_curve_add_nurbs_primitive(
       for (a = 0; a < 5; a++, bp++) {
         bp->vec[3] = 1.0;
         bp->f1 = SELECT;
-        bp->radius = bp->weight = 1.0;
+        bp->radius = bp->radius_normal = bp->weight = 1.0;
       }
 
       bp = nu->bp;
@@ -272,7 +273,7 @@ Nurb *ED_curve_add_nurbs_primitive(
         for (a = 0; a < 3; a++) {
           mul_m4_v3(mat, bezt->vec[a]);
         }
-        bezt->radius = bezt->weight = 1.0;
+        bezt->radius = bezt->radius_normal = bezt->weight = 1.0;
 
         bezt++;
         bezt->h1 = bezt->h2 = HD_AUTO;
@@ -281,7 +282,7 @@ Nurb *ED_curve_add_nurbs_primitive(
         for (a = 0; a < 3; a++) {
           mul_m4_v3(mat, bezt->vec[a]);
         }
-        bezt->radius = bezt->weight = 1.0;
+        bezt->radius = bezt->radius_normal = bezt->weight = 1.0;
 
         bezt++;
         bezt->h1 = bezt->h2 = HD_AUTO;
@@ -290,7 +291,7 @@ Nurb *ED_curve_add_nurbs_primitive(
         for (a = 0; a < 3; a++) {
           mul_m4_v3(mat, bezt->vec[a]);
         }
-        bezt->radius = bezt->weight = 1.0;
+        bezt->radius = bezt->radius_normal = bezt->weight = 1.0;
 
         bezt++;
         bezt->h1 = bezt->h2 = HD_AUTO;
@@ -299,7 +300,7 @@ Nurb *ED_curve_add_nurbs_primitive(
         for (a = 0; a < 3; a++) {
           mul_m4_v3(mat, bezt->vec[a]);
         }
-        bezt->radius = bezt->weight = 1.0;
+        bezt->radius = bezt->radius_normal = bezt->weight = 1.0;
 
         BKE_nurb_handles_calc(nu);
       }
@@ -328,7 +329,7 @@ Nurb *ED_curve_add_nurbs_primitive(
             bp->vec[3] = 1.0;
           }
           mul_m4_v3(mat, bp->vec);
-          bp->radius = bp->weight = 1.0;
+          bp->radius = bp->radius_normal = bp->weight = 1.0;
 
           bp++;
         }
