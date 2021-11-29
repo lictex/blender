@@ -1123,6 +1123,9 @@ void transform_mode_init(TransInfo *t, wmOperator *op, const int mode)
     case TFM_CURVE_SHRINKFATTEN:
       initCurveShrinkFatten(t);
       break;
+    case TFM_CURVE_NORMALSHRINKFATTEN:
+      initNormalCurveShrinkFatten(t);
+      break;
     case TFM_MASK_SHRINKFATTEN:
       initMaskShrinkFatten(t);
       break;
