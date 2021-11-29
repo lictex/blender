@@ -888,7 +888,7 @@ float BKE_nurb_calc_length(const Nurb *nu, int resolution)
       /* important to zero for BKE_nurb_makeCurve. */
       points = MEM_callocN(sizeof(float[3]) * pntsu * resolu, "getLength_nurbs");
 
-      BKE_nurb_makeCurve(nu, points, NULL, NULL, NULL, resolu, sizeof(float[3]));
+      BKE_nurb_makeCurve(nu, points, NULL, NULL, NULL, NULL, resolu, sizeof(float[3]));
 
       if (nu->flagu & CU_NURB_CYCLIC) {
         b = pntsu * resolu + 1;
@@ -921,8 +921,9 @@ void BKE_nurb_points_add(Nurb *nu, int number)
 
   BPoint *bp;
   int i;
-  for (i = 0, bp = &nu->bp[nu->pntsu]; i < number; i++, bp++) {
+  for (i = 0, bp = &nu->bp[nu->pntsu]; i < number; i++, bp++) { 
     bp->radius = 1.0f;
+    bp->radius_normal = 1.0f;
   }
 
   nu->pntsu += number;
@@ -937,6 +938,7 @@ void BKE_nurb_bezierPoints_add(Nurb *nu, int number)
 
   for (i = 0, bezt = &nu->bezt[nu->pntsu]; i < number; i++, bezt++) {
     bezt->radius = 1.0f;
+    bezt->radius_normal = 1.0f;
   }
 
   nu->pntsu += number;
@@ -1578,6 +1580,7 @@ void BKE_nurb_makeCurve(const Nurb *nu,
                         float *coord_array,
                         float *tilt_array,
                         float *radius_array,
+                        float *radius_normal_array,
                         float *weight_array,
                         int resolu,
                         int stride)
@@ -1587,6 +1590,7 @@ void BKE_nurb_makeCurve(const Nurb *nu,
   float u, ustart, uend, ustep, sumdiv;
   float *basisu, *sum, *fp;
   float *coord_fp = coord_array, *tilt_fp = tilt_array, *radius_fp = radius_array,
+        *radius_normal_fp = radius_normal_array,
         *weight_fp = weight_array;
   int i, len, istart, iend, cycl;
 
@@ -1684,6 +1688,10 @@ void BKE_nurb_makeCurve(const Nurb *nu,
           (*radius_fp) += (*fp) * bp->radius;
         }
 
+        if (radius_normal_fp) {
+          (*radius_normal_fp) += (*fp) * bp->radius_normal;
+        }
+
         if (weight_fp) {
           (*weight_fp) += (*fp) * bp->weight;
         }
@@ -1697,6 +1705,9 @@ void BKE_nurb_makeCurve(const Nurb *nu,
     }
     if (radius_fp) {
       radius_fp = POINTER_OFFSET(radius_fp, stride);
+    }
+    if (radius_normal_fp) {
+      radius_normal_fp = POINTER_OFFSET(radius_normal_fp, stride);
     }
     if (weight_fp) {
       weight_fp = POINTER_OFFSET(weight_fp, stride);
@@ -2039,6 +2050,7 @@ static void tilt_bezpart(const BezTriple *prevbezt,
                          const Nurb *nu,
                          float *tilt_array,
                          float *radius_array,
+                         float *radius_normal_array,
                          float *weight_array,
                          int resolu,
                          int stride)
@@ -2117,6 +2129,28 @@ static void tilt_bezpart(const BezTriple *prevbezt,
       }
 
       radius_array = POINTER_OFFSET(radius_array, stride);
+    }
+
+    if (radius_normal_array) {
+      if (nu->radius_interp == KEY_CU_EASE) {
+        /* Support 2.47 ease interp
+         * NOTE: this only takes the 2 points into account,
+         * giving much more localized results to changes in radius, sometimes you want that. */
+        *radius_normal_array = prevbezt->radius_normal +
+                               (bezt->radius_normal - prevbezt->radius_normal) *
+                                               (3.0f * fac * fac - 2.0f * fac * fac * fac);
+      }
+      else {
+
+        /* reuse interpolation from tilt if we can */
+        if (tilt_array == NULL || nu->tilt_interp != nu->radius_interp) {
+          key_curve_position_weights(fac, t, nu->radius_interp);
+        }
+        *radius_normal_array = t[0] * pprev->radius_normal + t[1] * prevbezt->radius_normal +
+                               t[2] * bezt->radius_normal + t[3] * next->radius_normal;
+      }
+
+      radius_normal_array = POINTER_OFFSET(radius_normal_array, stride);
     }
 
     if (weight_array) {
@@ -2742,6 +2776,7 @@ void BKE_curve_bevelList_make(Object *ob, const ListBase *nurbs, const bool for_
         copy_v3_v3(bevp->vec, bp->vec);
         bevp->tilt = bp->tilt;
         bevp->radius = bp->radius;
+        bevp->radius_normal = bp->radius_normal;
         bevp->weight = bp->weight;
         bp++;
         if (seglen != NULL && len != 0) {
@@ -2813,6 +2848,7 @@ void BKE_curve_bevelList_make(Object *ob, const ListBase *nurbs, const bool for_
           copy_v3_v3(bevp->vec, prevbezt->vec[1]);
           bevp->tilt = prevbezt->tilt;
           bevp->radius = prevbezt->radius;
+          bevp->radius_normal = prevbezt->radius_normal;
           bevp->weight = prevbezt->weight;
           bevp->dupe_tag = false;
           bevp++;
@@ -2850,6 +2886,7 @@ void BKE_curve_bevelList_make(Object *ob, const ListBase *nurbs, const bool for_
                        nu,
                        do_tilt ? &bevp->tilt : NULL,
                        do_radius ? &bevp->radius : NULL,
+                       do_radius ? &bevp->radius_normal : NULL,
                        do_weight ? &bevp->weight : NULL,
                        resolu,
                        sizeof(BevPoint));
@@ -2894,6 +2931,7 @@ void BKE_curve_bevelList_make(Object *ob, const ListBase *nurbs, const bool for_
         copy_v3_v3(bevp->vec, prevbezt->vec[1]);
         bevp->tilt = prevbezt->tilt;
         bevp->radius = prevbezt->radius;
+        bevp->radius_normal = prevbezt->radius_normal;
         bevp->weight = prevbezt->weight;
 
         sub_v3_v3v3(bevp->dir, prevbezt->vec[1], prevbezt->vec[0]);
@@ -2926,6 +2964,7 @@ void BKE_curve_bevelList_make(Object *ob, const ListBase *nurbs, const bool for_
                            &bevp->vec[0],
                            do_tilt ? &bevp->tilt : NULL,
                            do_radius ? &bevp->radius : NULL,
+                           do_radius ? &bevp->radius_normal : NULL,
                            do_weight ? &bevp->weight : NULL,
                            resolu,
                            sizeof(BevPoint));

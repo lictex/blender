@@ -115,4 +115,27 @@ void initCurveShrinkFatten(TransInfo *t)
 
   t->flag |= T_NO_CONSTRAINT;
 }
+
+void initNormalCurveShrinkFatten(TransInfo *t)
+{
+  t->mode = TFM_CURVE_NORMALSHRINKFATTEN;
+  t->transform = applyCurveShrinkFatten;
+
+  initMouseInputMode(t, &t->mouse, INPUT_SPRING);
+
+  t->idx_max = 0;
+  t->num.idx_max = 0;
+  t->snap[0] = 0.1f;
+  t->snap[1] = t->snap[0] * 0.1f;
+
+  copy_v3_fl(t->num.val_inc, t->snap[0]);
+  t->num.unit_sys = t->scene->unit.system;
+  t->num.unit_type[0] = B_UNIT_NONE;
+
+#ifdef USE_NUM_NO_ZERO
+  t->num.val_flag[0] |= NUM_NO_ZERO;
+#endif
+
+  t->flag |= T_NO_CONSTRAINT;
+}
 /** \} */

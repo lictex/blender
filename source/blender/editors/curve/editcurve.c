@@ -3476,6 +3476,7 @@ static void subdividenurb(Object *obedit, View3D *v3d, int number_cuts)
               }
 
               beztn->radius = (bezt->radius + nextbezt->radius) / 2;
+              beztn->radius_normal = (bezt->radius_normal + nextbezt->radius_normal) / 2;
               beztn->weight = (bezt->weight + nextbezt->weight) / 2;
 
               memcpy(prevvec, beztn->vec, sizeof(float[9]));
@@ -3544,6 +3545,7 @@ static void subdividenurb(Object *obedit, View3D *v3d, int number_cuts)
               memcpy(bpn, nextbp, sizeof(BPoint));
               interp_v4_v4v4(bpn->vec, bp->vec, nextbp->vec, factor);
               bpn->radius = interpf(bp->radius, nextbp->radius, factor);
+              bpn->radius_normal = interpf(bp->radius_normal, nextbp->radius_normal, factor);
               bpn++;
             }
           }

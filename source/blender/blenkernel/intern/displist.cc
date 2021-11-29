@@ -380,7 +380,8 @@ static void curve_to_displist(const Curve *cu,
       dl->charidx = nu->charidx;
       dl->type = is_cyclic ? DL_POLY : DL_SEGM;
 
-      BKE_nurb_makeCurve(nu, dl->verts, nullptr, nullptr, nullptr, resolution, sizeof(float[3]));
+      BKE_nurb_makeCurve(
+          nu, dl->verts, nullptr, nullptr, nullptr, nullptr, resolution, sizeof(float[3]));
     }
     else if (nu->type == CU_POLY) {
       const int len = nu->pntsu;
@@ -1020,7 +1021,7 @@ static void evaluate_surface_object(Depsgraph *depsgraph,
         dl->type = DL_SEGM;
       }
 
-      BKE_nurb_makeCurve(nu, data, nullptr, nullptr, nullptr, resolu, sizeof(float[3]));
+      BKE_nurb_makeCurve(nu, data, nullptr, nullptr, nullptr, nullptr, resolu, sizeof(float[3]));
     }
     else {
       const int len = (nu->pntsu * resolu) * (nu->pntsv * resolv);
@@ -1069,6 +1070,7 @@ static void rotateBevelPiece(const Curve *cu,
                              const float bev_blend,
                              const float widfac,
                              const float radius_factor,
+                             const float radius_factor_normal,
                              float **r_data)
 {
   float *data = *r_data;
@@ -1077,8 +1079,8 @@ static void rotateBevelPiece(const Curve *cu,
     if (cu->flag & CU_3D) {
       float vec[3], quat[4];
 
-      vec[0] = fp[1] + widfac;
-      vec[1] = fp[2];
+      vec[0] = (fp[1] + widfac) * radius_factor;
+      vec[1] = fp[2] * radius_factor_normal;
       vec[2] = 0.0;
 
       if (nbevp == nullptr) {
@@ -1092,9 +1094,13 @@ static void rotateBevelPiece(const Curve *cu,
 
       mul_qt_v3(quat, vec);
 
-      data[0] += radius_factor * vec[0];
-      data[1] += radius_factor * vec[1];
-      data[2] += radius_factor * vec[2];
+      data[0] += vec[0];
+      data[1] += vec[1];
+      data[2] += vec[2];
+
+      //data[0] += radius_factor * vec[0];
+      //data[1] += radius_factor * vec[1];
+      //data[2] += radius_factor_normal * vec[2];
     }
     else {
       float sina, cosa;
@@ -1403,10 +1409,12 @@ static GeometrySet evaluate_curve_type_object(Depsgraph *depsgraph,
           BevPoint *bevp = &bl->bevpoints[start];
           for (int i = start, a = 0; a < steps; i++, bevp++, a++) {
             float radius_factor = 1.0;
+            float radius_factor_normal = 1.0;
             float *cur_data = data;
 
             if (cu->taperobj == nullptr) {
               radius_factor = bevp->radius;
+              radius_factor_normal = bevp->radius_normal;
             }
             else {
               float taper_factor;
@@ -1447,15 +1455,34 @@ static GeometrySet evaluate_curve_type_object(Depsgraph *depsgraph,
 
             /* rotate bevel piece and write in data */
             if ((a == 0) && (bevp != bevp_last)) {
-              rotateBevelPiece(
-                  cu, bevp, bevp + 1, dlb, 1.0f - first_blend, widfac, radius_factor, &data);
+              rotateBevelPiece(cu,
+                               bevp,
+                               bevp + 1,
+                               dlb,
+                               1.0f - first_blend,
+                               widfac,
+                               radius_factor,
+                               radius_factor_normal, & data);
             }
             else if ((a == steps - 1) && (bevp != bevp_first)) {
-              rotateBevelPiece(
-                  cu, bevp, bevp - 1, dlb, 1.0f - last_blend, widfac, radius_factor, &data);
+              rotateBevelPiece(cu,
+                               bevp,
+                               bevp - 1,
+                               dlb,
+                               1.0f - last_blend,
+                               widfac,
+                               radius_factor,
+                               radius_factor_normal, & data);
             }
             else {
-              rotateBevelPiece(cu, bevp, nullptr, dlb, 0.0f, widfac, radius_factor, &data);
+              rotateBevelPiece(cu,
+                               bevp,
+                               nullptr,
+                               dlb,
+                               0.0f,
+                               widfac,
+                               radius_factor,
+                               radius_factor_normal, & data);
             }
 
             if ((cu->flag & CU_FILL_CAPS) && !(nu->flagu & CU_NURB_CYCLIC)) {

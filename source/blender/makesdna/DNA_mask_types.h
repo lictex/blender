@@ -95,7 +95,7 @@ typedef struct MaskSplinePointUW {
 typedef struct MaskSplinePoint {
   /** Actual point coordinates and its handles. */
   BezTriple bezt;
-  char _pad[4];
+  //char _pad[4];
   /** Number of uv feather values. */
   int tot_uw;
   /** Feather UV values. */

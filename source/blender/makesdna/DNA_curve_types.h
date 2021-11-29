@@ -49,7 +49,7 @@ struct VFont;
 #
 #
 typedef struct BevPoint {
-  float vec[3], tilt, radius, weight, offset;
+  float vec[3], tilt, radius, radius_normal, weight, offset;
   /** 2D Only. */
   float sina, cosa;
   /** 3D Only. */
@@ -94,7 +94,7 @@ typedef struct BezTriple {
   /** Used for softbody goal weight. */
   float weight;
   /** For bevel tapering & modifiers. */
-  float radius;
+  float radius, radius_normal;
 
   /** Ipo: interpolation mode for segment from this BezTriple to the next. */
   char ipo;
@@ -134,7 +134,7 @@ typedef struct BPoint {
   char _pad1[1];
   short hide;
   /** User-set radius per point for beveling etc. */
-  float radius;
+  float radius, radius_normal;
   char _pad[4];
 } BPoint;
 

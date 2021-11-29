@@ -1694,6 +1694,17 @@ bool ED_view3d_depth_read_cached(const ViewDepths *vd,
   return false;
 }
 
+bool ED_view3d_depth_read_normal(const ARegion *region, const int mval[2], float r_normal[3])
+{
+  ViewDepths depths;
+  rcti rect;
+  BLI_rcti_init_pt_radius(&rect, mval, 1);
+  view3d_depths_rect_create(region, &rect, &depths);
+  bool r = ED_view3d_depth_read_cached_normal(region, &depths, (int[2]){1,1}, r_normal);
+  MEM_SAFE_FREE(depths.depths);
+  return r;
+}
+
 bool ED_view3d_depth_read_cached_normal(const ARegion *region,
                                         const ViewDepths *depths,
                                         const int mval[2],

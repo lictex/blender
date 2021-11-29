@@ -159,6 +159,9 @@ bool ED_view3d_depth_read_cached(const ViewDepths *vd,
                                  const int mval[2],
                                  int margin,
                                  float *r_depth);
+bool ED_view3d_depth_read_normal(const struct ARegion *region,
+                                 const int mval[2],
+                                 float r_normal[3]);
 bool ED_view3d_depth_read_cached_normal(const struct ARegion *region,
                                         const ViewDepths *depths,
                                         const int mval[2],

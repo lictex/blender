@@ -703,11 +703,13 @@ static Nurb *rna_Curve_spline_new(Curve *cu, int type)
   if (type == CU_BEZIER) {
     BezTriple *bezt = (BezTriple *)MEM_callocN(sizeof(BezTriple), "spline.new.bezt");
     bezt->radius = 1.0;
+    bezt->radius_normal = 1.0;
     nu->bezt = bezt;
   }
   else {
     BPoint *bp = (BPoint *)MEM_callocN(sizeof(BPoint), "spline.new.bp");
     bp->radius = 1.0f;
+    bp->radius_normal = 1.0f;
     nu->bp = bp;
   }
 
@@ -912,6 +914,12 @@ static void rna_def_bpoint(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Bevel Radius", "Radius for beveling");
   RNA_def_property_update(prop, 0, "rna_Curve_update_data");
 
+  prop = RNA_def_property(srna, "radius_normal", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, NULL, "radius_normal");
+  RNA_def_property_range(prop, 0.0f, FLT_MAX);
+  RNA_def_property_ui_text(prop, "Bevel Normal Radius", "Normal Radius for beveling");
+  RNA_def_property_update(prop, 0, "rna_Curve_update_data");
+
   RNA_def_struct_path_func(srna, "rna_Curve_spline_point_path");
 }
 
@@ -1001,6 +1009,13 @@ static void rna_def_beztriple(BlenderRNA *brna)
   RNA_def_property_range(prop, 0.0f, FLT_MAX);
   RNA_def_property_ui_text(prop, "Bevel Radius", "Radius for beveling");
   RNA_def_property_update(prop, 0, "rna_Curve_update_data");
+
+  prop = RNA_def_property(srna, "radius_normal", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, NULL, "radius_normal");
+  RNA_def_property_range(prop, 0.0f, FLT_MAX);
+  RNA_def_property_ui_text(prop, "Bevel Normal Radius", "Normal Radius for beveling");
+  RNA_def_property_update(prop, 0, "rna_Curve_update_data");
+
 
   RNA_def_struct_path_func(srna, "rna_Curve_spline_point_path");
 }

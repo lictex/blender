@@ -780,7 +780,7 @@ bGPdata *BKE_gpencil_data_addnew(Main *bmain, const char name[])
   /* use adaptive curve resolution by default */
   gpd->flag |= GP_DATA_CURVE_ADAPTIVE_RESOLUTION;
 
-  gpd->zdepth_offset = 0.150f;
+  gpd->zdepth_offset = 1.0f;
 
   /* grid settings */
   ARRAY_SET_ITEMS(gpd->grid.color, 0.5f, 0.5f, 0.5f); /* Color */

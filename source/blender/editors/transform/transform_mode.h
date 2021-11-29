@@ -87,6 +87,9 @@ void initBoneRoll(TransInfo *t);
 /* transform_mode_curveshrinkfatten.c */
 void initCurveShrinkFatten(TransInfo *t);
 
+/* transform_mode_curveshrinkfatten.c */
+void initNormalCurveShrinkFatten(TransInfo *t);
+
 /* transform_mode_edge_bevelweight.c */
 void initBevelWeight(TransInfo *t);
 

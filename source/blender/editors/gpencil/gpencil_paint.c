@@ -430,12 +430,6 @@ static void gpencil_stroke_convertcoords(tGPsdata *p,
 
   /* in 3d-space - pt->x/y/z are 3 side-by-side floats */
   if (gpd->runtime.sbuffer_sflag & GP_STROKE_3DSPACE) {
-
-    /* add small offset to keep stroke over the surface */
-    if ((depth) && (gpd->zdepth_offset > 0.0f) && (*p->align_flag & GP_PROJECT_DEPTH_VIEW)) {
-      *depth *= (1.0f - (gpd->zdepth_offset / 1000.0f));
-    }
-
     int mval_i[2];
     float rmval[2];
     rmval[0] = mval[0] - 0.5f;
@@ -447,6 +441,36 @@ static void gpencil_stroke_convertcoords(tGPsdata *p,
       /* projecting onto 3D-Geometry
        * - nothing more needs to be done here, since view_autodist_simple() has already done it
        */
+
+      /* add small offset to keep stroke over the surface */
+
+#if 1
+      // try to keep consistent offset by using world normals, but also getting more noise
+      // from the low accuracy depth buffers..
+      if ((depth) && (gpd->zdepth_offset > 0.0f) && (*p->align_flag & GP_PROJECT_DEPTH_VIEW)) {
+        float nrm[3];
+        ED_view3d_depth_read_normal(p->region, mval_i, nrm);
+        mul_vn_fl(
+            nrm, 3, gpd->zdepth_offset * (p->brush->size / 2.0f) * (gpd->pixfactor / 1000.0f));
+        add_vn_vn(out, nrm, 3);
+      }
+#else
+      // depth only, works when view is nearly perpendicular to the object
+      if ((depth) && (gpd->zdepth_offset > 0.0f) && (*p->align_flag & GP_PROJECT_DEPTH_VIEW)) {
+        float px_far_ws[3];
+        ED_view3d_unproject_v3(p->region, mval[0] + 0.5f, mval[1] + 0.5f, 1, px_far_ws);
+        float px_near_ws[3];
+        ED_view3d_unproject_v3(p->region, mval[0] + 0.5f, mval[1] + 0.5f, 0, px_near_ws);
+        float px_depth_ws[3];
+        sub_vn_vnvn(px_depth_ws, px_near_ws, px_far_ws, 3);
+        mul_vn_fl(px_depth_ws,
+                  3,
+                  gpd->zdepth_offset * (p->brush->size / 2.0f) * (gpd->pixfactor / 1000.0f) /
+                      sqrt(len_squared_vn(px_depth_ws, 3)));
+
+        add_vn_vn(out, px_depth_ws, 3);
+      }
+#endif
 
       /* verify valid zdepth, if it's wrong, the default drawing mode is used
        * and the function doesn't return now */
@@ -1206,7 +1230,7 @@ static void gpencil_stroke_newfrombuffer(tGPsdata *p)
     }
     /* If reproject the stroke using Stroke mode, need to apply a smooth because
      * the reprojection creates small jitter. */
-    if (ts->gpencil_v3d_align & GP_PROJECT_DEPTH_STROKE) {
+    if (ts->gpencil_v3d_align & (GP_PROJECT_DEPTH_STROKE | GP_PROJECT_DEPTH_VIEW)) {
       float ifac = (float)brush->gpencil_settings->input_samples / 10.0f;
       float sfac = interpf(1.0f, 0.2f, ifac);
       for (i = 0; i < gps->totpoints - 1; i++) {

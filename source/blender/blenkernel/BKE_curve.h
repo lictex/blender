@@ -202,6 +202,7 @@ void BKE_nurb_makeCurve(const struct Nurb *nu,
                         float *coord_array,
                         float *tilt_array,
                         float *radius_array,
+                        float *radius_normal_array,
                         float *weight_array,
                         int resolu,
                         int stride);

@@ -145,6 +145,7 @@ const EnumPropertyItem rna_enum_transform_mode_types[] = {
     {TFM_BONE_ENVELOPE, "BONE_ENVELOPE", 0, "Bone Envelope", ""},
     {TFM_BONE_ENVELOPE_DIST, "BONE_ENVELOPE_DIST", 0, "Bone Envelope Distance", ""},
     {TFM_CURVE_SHRINKFATTEN, "CURVE_SHRINKFATTEN", 0, "Curve Shrink/Fatten", ""},
+    {TFM_CURVE_NORMALSHRINKFATTEN, "CURVE_NORMALSHRINKFATTEN", 0, "Curve Normal Shrink/Fatten", ""},
     {TFM_MASK_SHRINKFATTEN, "MASK_SHRINKFATTEN", 0, "Mask Shrink/Fatten", ""},
     {TFM_GPENCIL_SHRINKFATTEN, "GPENCIL_SHRINKFATTEN", 0, "Grease Pencil Shrink/Fatten", ""},
     {TFM_BONE_ROLL, "BONE_ROLL", 0, "Bone Roll", ""},

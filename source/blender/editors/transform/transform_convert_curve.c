@@ -282,6 +282,10 @@ void createTransCurveVerts(TransInfo *t)
                 td->val = &(bezt->radius);
                 td->ival = bezt->radius;
               }
+              else if (t->mode == TFM_CURVE_NORMALSHRINKFATTEN) {
+                td->val = &(bezt->radius_normal);
+                td->ival = bezt->radius_normal;
+              }
               else if (t->mode == TFM_TILT) {
                 td->val = &(bezt->tilt);
                 td->ival = bezt->tilt;
@@ -393,6 +397,10 @@ void createTransCurveVerts(TransInfo *t)
                 td->val = &(bp->radius);
                 td->ival = bp->radius;
               }
+              else if (ELEM(t->mode, TFM_CURVE_NORMALSHRINKFATTEN)) {
+                td->val = &(bp->radius_normal);
+                td->ival = bp->radius_normal;
+              }
               else {
                 td->val = &(bp->tilt);
                 td->ival = bp->tilt;
@@ -426,7 +434,8 @@ void createTransCurveVerts(TransInfo *t)
       /* TODO: in the case of tilt and radius we can also avoid allocating the
        * initTransDataCurveHandles but for now just don't change handle types */
       if ((nu->type == CU_BEZIER) &&
-          ELEM(t->mode, TFM_CURVE_SHRINKFATTEN, TFM_TILT, TFM_DUMMY) == 0) {
+          ELEM(t->mode, TFM_CURVE_SHRINKFATTEN, TFM_CURVE_NORMALSHRINKFATTEN, TFM_TILT, TFM_DUMMY) ==
+              0) {
         /* sets the handles based on their selection,
          * do this after the data is copied to the TransData */
         BKE_nurb_handles_test(nu, !hide_handles, use_around_origins_for_handles_test);
