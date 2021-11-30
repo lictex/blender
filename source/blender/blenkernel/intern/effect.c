@@ -167,8 +167,14 @@ static void precalculate_effector(struct Depsgraph *depsgraph, EffectorCache *ef
       }
 
       if (eff->ob->runtime.curve_cache->anim_path_accum_length) {
-        BKE_where_on_path(
-            eff->ob, 0.0, eff->guide_loc, eff->guide_dir, NULL, &eff->guide_radius, NULL);
+        BKE_where_on_path(eff->ob,
+                          0.0,
+                          eff->guide_loc,
+                          eff->guide_dir,
+                          NULL,
+                          &eff->guide_radius,
+                          &eff->guide_radius_normal,
+                          NULL);
         mul_m4_v3(eff->ob->obmat, eff->guide_loc);
         mul_mat3_m4_v3(eff->ob->obmat, eff->guide_dir);
       }

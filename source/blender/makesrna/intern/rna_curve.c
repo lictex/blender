@@ -522,6 +522,18 @@ static PointerRNA rna_Curve_taperObject_get(PointerRNA *ptr)
   return rna_pointer_inherit_refine(ptr, NULL, NULL);
 }
 
+static PointerRNA rna_Curve_normalTaperObject_get(PointerRNA *ptr)
+{
+  Curve *cu = (Curve *)ptr->owner_id;
+  Object *ob = cu->normaltaperobj;
+
+  if (ob) {
+    return rna_pointer_inherit_refine(ptr, &RNA_Object, ob);
+  }
+
+  return rna_pointer_inherit_refine(ptr, NULL, NULL);
+}
+
 static void rna_Curve_taperObject_set(PointerRNA *ptr,
                                       PointerRNA value,
                                       struct ReportList *UNUSED(reports))
@@ -539,6 +551,26 @@ static void rna_Curve_taperObject_set(PointerRNA *ptr,
   }
   else {
     cu->taperobj = NULL;
+  }
+}
+
+static void rna_Curve_normalTaperObject_set(PointerRNA *ptr,
+                                      PointerRNA value,
+                                      struct ReportList *UNUSED(reports))
+{
+  Curve *cu = (Curve *)ptr->owner_id;
+  Object *ob = (Object *)value.data;
+
+  if (ob) {
+    /* if taper object has got the save curve, as object, for which it's */
+    /* set as bevobj, there could be infinity loop in displist calculation */
+    if (ob->type == OB_CURVE && ob->data != cu) {
+      cu->normaltaperobj = ob;
+      id_lib_extern((ID *)ob);
+    }
+  }
+  else {
+    cu->normaltaperobj = NULL;
   }
 }
 
@@ -1769,6 +1801,20 @@ static void rna_def_curve(BlenderRNA *brna)
   RNA_def_property_pointer_funcs(prop,
                                  "rna_Curve_taperObject_get",
                                  "rna_Curve_taperObject_set",
+                                 NULL,
+                                 "rna_Curve_otherObject_poll");
+
+  prop = RNA_def_property(srna, "normal_taper_object", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "Object");
+  RNA_def_property_pointer_sdna(prop, NULL, "normaltaperobj");
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_ui_text(
+      prop, "Normal Taper Object", "Curve object name that defines the taper (width)");
+  RNA_def_property_update(prop, 0, "rna_Curve_update_deps");
+  RNA_def_property_pointer_funcs(prop,
+                                 "rna_Curve_normalTaperObject_get",
+                                 "rna_Curve_normalTaperObject_set",
                                  NULL,
                                  "rna_Curve_otherObject_poll");
 

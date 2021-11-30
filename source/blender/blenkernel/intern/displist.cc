@@ -1444,12 +1444,22 @@ static GeometrySet evaluate_curve_type_object(Depsgraph *depsgraph,
               }
 
               radius_factor = displist_calc_taper(depsgraph, scene, cu->taperobj, taper_factor);
+              if (cu->normaltaperobj) {
+                radius_factor_normal = displist_calc_taper(
+                    depsgraph, scene, cu->normaltaperobj, taper_factor);
+              }
+              else {
+                radius_factor_normal = displist_calc_taper(
+                    depsgraph, scene, cu->taperobj, taper_factor);
+              }
 
               if (cu->taper_radius_mode == CU_TAPER_RADIUS_MULTIPLY) {
                 radius_factor *= bevp->radius;
+                radius_factor_normal *= bevp->radius_normal;
               }
               else if (cu->taper_radius_mode == CU_TAPER_RADIUS_ADD) {
                 radius_factor += bevp->radius;
+                radius_factor_normal += bevp->radius_normal;
               }
             }
 

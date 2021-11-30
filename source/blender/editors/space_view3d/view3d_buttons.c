@@ -91,7 +91,7 @@ typedef struct {
 } TransformMedian_Mesh;
 
 typedef struct {
-  float location[3], weight, b_weight, radius, tilt;
+  float location[3], weight, b_weight, radius, radius_normal, tilt;
 } TransformMedian_Curve;
 
 typedef struct {
@@ -386,6 +386,7 @@ static void v3d_editvertex_buts(uiLayout *layout, View3D *v3d, Object *ob, float
             tot++;
             median->weight += bezt->weight;
             median->radius += bezt->radius;
+            median->radius_normal += bezt->radius_normal;
             median->tilt += bezt->tilt;
             if (!totcurvedata) { /* I.e. first time... */
               selp = bezt;
@@ -417,6 +418,7 @@ static void v3d_editvertex_buts(uiLayout *layout, View3D *v3d, Object *ob, float
             tot++;
             median->weight += bp->weight;
             median->radius += bp->radius;
+            median->radius_normal += bp->radius_normal;
             median->tilt += bp->tilt;
             if (!totcurvedata) { /* I.e. first time... */
               selp = bp;
@@ -507,6 +509,7 @@ static void v3d_editvertex_buts(uiLayout *layout, View3D *v3d, Object *ob, float
     }
     median->weight /= (float)totcurvedata;
     median->radius /= (float)totcurvedata;
+    median->radius_normal /= (float)totcurvedata;
     median->tilt /= (float)totcurvedata;
   }
   else if (totlattdata) {
@@ -884,6 +887,22 @@ static void v3d_editvertex_buts(uiLayout *layout, View3D *v3d, Object *ob, float
         but = uiDefButF(block,
                         UI_BTYPE_NUM,
                         B_TRANSFORM_PANEL_MEDIAN,
+                        IFACE_("Mean Normal Radius:"),
+                        0,
+                        yi -= buth + but_margin,
+                        butw,
+                        buth,
+                        &ve_median->radius_normal,
+                        0.0,
+                        100.0,
+                        0,
+                        0,
+                        TIP_("Radius of curve control points"));
+        UI_but_number_step_size_set(but, 1);
+        UI_but_number_precision_set(but, 3);
+        but = uiDefButF(block,
+                        UI_BTYPE_NUM,
+                        B_TRANSFORM_PANEL_MEDIAN,
                         IFACE_("Mean Tilt:"),
                         0,
                         yi -= buth + but_margin,
@@ -898,6 +917,27 @@ static void v3d_editvertex_buts(uiLayout *layout, View3D *v3d, Object *ob, float
         UI_but_number_step_size_set(but, 1);
         UI_but_number_precision_set(but, 3);
         UI_but_unit_type_set(but, PROP_UNIT_ROTATION);
+
+        but = uiDefButO(block,
+                        UI_BTYPE_BUT,
+                        "CURVE_OT_radius_set",
+                        WM_OP_INVOKE_DEFAULT,
+                        IFACE_("Set All Radius"),
+                        0,
+                        yi -= buth + but_margin,
+                        butw,
+                        buth,
+                        "");
+        but = uiDefButO(block,
+                        UI_BTYPE_BUT,
+                        "CURVE_OT_radius_normal_set",
+                        WM_OP_INVOKE_DEFAULT,
+                        IFACE_("Set All Normal Radius"),
+                        0,
+                        yi -= buth + but_margin,
+                        butw,
+                        buth,
+                        "");
       }
     }
     /* Lattice... */
@@ -1085,7 +1125,7 @@ static void v3d_editvertex_buts(uiLayout *layout, View3D *v3d, Object *ob, float
     }
     else if (ELEM(ob->type, OB_CURVE, OB_SURF) &&
              (apply_vcos || median_basis.curve.b_weight || median_basis.curve.weight ||
-              median_basis.curve.radius || median_basis.curve.tilt)) {
+              median_basis.curve.radius || median_basis.curve.radius_normal || median_basis.curve.tilt)) {
       const TransformMedian_Curve *median = &median_basis.curve,
                                   *ve_median = &ve_median_basis.curve;
       Curve *cu = ob->data;
@@ -1113,6 +1153,10 @@ static void v3d_editvertex_buts(uiLayout *layout, View3D *v3d, Object *ob, float
               }
               if (median->radius) {
                 apply_raw_diff(&bezt->radius, tot, ve_median->radius, median->radius);
+              }
+              if (median->radius_normal) {
+                apply_raw_diff(
+                    &bezt->radius_normal, tot, ve_median->radius_normal, median->radius_normal);
               }
               if (median->tilt) {
                 apply_raw_diff(&bezt->tilt, tot, ve_median->tilt, median->tilt);
@@ -1143,6 +1187,10 @@ static void v3d_editvertex_buts(uiLayout *layout, View3D *v3d, Object *ob, float
               }
               if (median->radius) {
                 apply_raw_diff(&bp->radius, tot, ve_median->radius, median->radius);
+              }
+              if (median->radius_normal) {
+                apply_raw_diff(
+                    &bp->radius_normal, tot, ve_median->radius_normal, median->radius_normal);
               }
               if (median->tilt) {
                 apply_raw_diff(&bp->tilt, tot, ve_median->tilt, median->tilt);

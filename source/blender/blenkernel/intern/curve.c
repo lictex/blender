@@ -132,6 +132,7 @@ static void curve_foreach_id(ID *id, LibraryForeachIDData *data)
   Curve *curve = (Curve *)id;
   BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, curve->bevobj, IDWALK_CB_NOP);
   BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, curve->taperobj, IDWALK_CB_NOP);
+  BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, curve->normaltaperobj, IDWALK_CB_NOP);
   BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, curve->textoncurve, IDWALK_CB_NOP);
   BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, curve->key, IDWALK_CB_USER);
   for (int i = 0; i < curve->totcol; i++) {
@@ -275,6 +276,7 @@ static void curve_blend_read_lib(BlendLibReader *reader, ID *id)
 
   BLO_read_id_address(reader, cu->id.lib, &cu->bevobj);
   BLO_read_id_address(reader, cu->id.lib, &cu->taperobj);
+  BLO_read_id_address(reader, cu->id.lib, &cu->normaltaperobj);
   BLO_read_id_address(reader, cu->id.lib, &cu->textoncurve);
   BLO_read_id_address(reader, cu->id.lib, &cu->vfont);
   BLO_read_id_address(reader, cu->id.lib, &cu->vfontb);
@@ -300,6 +302,7 @@ static void curve_blend_read_expand(BlendExpander *expander, ID *id)
   BLO_expand(expander, cu->ipo); /* XXX deprecated - old animation system */
   BLO_expand(expander, cu->bevobj);
   BLO_expand(expander, cu->taperobj);
+  BLO_expand(expander, cu->normaltaperobj);
   BLO_expand(expander, cu->textoncurve);
 }
 

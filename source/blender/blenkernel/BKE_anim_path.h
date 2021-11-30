@@ -47,6 +47,7 @@ bool BKE_where_on_path(const struct Object *ob,
                        float r_dir[3],
                        float r_quat[4],
                        float *r_radius,
+                       float *r_radius_normal,
                        float *r_weight);
 
 #ifdef __cplusplus

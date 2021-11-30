@@ -215,6 +215,7 @@ typedef struct tSplineIk_EvalState {
   float locrot_offset[4][4]; /* Bone rotation and location offset inherited from parent. */
   float prev_tail_loc[3];    /* Tail location of the previous bone. */
   float prev_tail_radius;    /* Tail curve radius of the previous bone. */
+  float prev_tail_radius_normal;    /* Tail curve radius of the previous bone. */
   int prev_tail_seg_idx;     /* Curve segment the previous tail bone belongs to. */
 } tSplineIk_EvalState;
 
@@ -286,7 +287,8 @@ static int position_tail_on_spline(bSplineIKConstraint *ik_data,
                                    const int prev_seg_idx,
                                    float r_tail_pos[3],
                                    float *r_new_curve_pos,
-                                   float *r_radius)
+                                   float *r_radius,
+                                   float *r_radius_normal)
 {
   /* This is using the tessellated curve data.
    * So we are working with piece-wise linear curve segments.
@@ -375,9 +377,11 @@ static int position_tail_on_spline(bSplineIKConstraint *ik_data,
 
   if (*r_new_curve_pos > 1.0f) {
     *r_radius = bp->radius;
+    *r_radius_normal = bp->radius_normal;
   }
   else {
     *r_radius = (1.0f - frac) * prev_bp->radius + frac * bp->radius;
+    *r_radius_normal = (1.0f - frac) * prev_bp->radius_normal + frac * bp->radius_normal;
   }
 
   return cur_seg_idx;
@@ -391,10 +395,12 @@ static void splineik_evaluate_bone(
 
   if (pchan->bone->length < FLT_EPSILON) {
     /* Only move the bone position with zero length bones. */
-    float bone_pos[4], dir[3], rad;
-    BKE_where_on_path(ik_data->tar, state->curve_position, bone_pos, dir, NULL, &rad, NULL);
+    float bone_pos[4], dir[3], rad, rad_nrm;
+    BKE_where_on_path(
+        ik_data->tar, state->curve_position, bone_pos, dir, NULL, &rad, &rad_nrm, NULL);
 
     apply_curve_transform(ik_data, ob, rad, bone_pos, &rad);
+    apply_curve_transform(ik_data, ob, rad_nrm, bone_pos, &rad_nrm);
 
     copy_v3_v3(pchan->pose_mat[3], bone_pos);
     copy_v3_v3(pchan->pose_head, bone_pos);
@@ -405,7 +411,7 @@ static void splineik_evaluate_bone(
 
   float orig_head[3], orig_tail[3], pose_head[3], pose_tail[3];
   float base_pose_mat[3][3], pose_mat[3][3];
-  float spline_vec[3], scale_fac, radius = 1.0f;
+  float spline_vec[3], scale_fac, radius = 1.0f, radius_normal = 1.0f;
   float tail_blend_fac = 0.0f;
 
   mul_v3_m4v3(pose_head, state->locrot_offset, pchan->pose_head);
@@ -431,22 +437,25 @@ static void splineik_evaluate_bone(
 
   /* Step 1: determine the positions for the endpoints of the bone. */
   if (point_start < 1.0f) {
-    float vec[4], dir[3], rad;
+    float vec[4], dir[3], rad, rad_nrm;
     radius = 0.0f;
 
     /* Calculate head position. */
     if (point_start == 0.0f) {
       /* Start of the path. We have no previous tail position to copy. */
-      BKE_where_on_path(ik_data->tar, point_start, vec, dir, NULL, &rad, NULL);
+      BKE_where_on_path(ik_data->tar, point_start, vec, dir, NULL, &rad, &rad_nrm, NULL);
     }
     else {
       copy_v3_v3(vec, state->prev_tail_loc);
       rad = state->prev_tail_radius;
+      rad_nrm = state->prev_tail_radius_normal;
     }
 
     radius = rad;
+    radius_normal = rad_nrm;
     copy_v3_v3(pose_head, vec);
     apply_curve_transform(ik_data, ob, rad, pose_head, &radius);
+    apply_curve_transform(ik_data, ob, rad_nrm, pose_head, &radius_normal);
 
     /* Calculate tail position. */
     if (ik_data->yScaleMode != CONSTRAINT_SPLINEIK_YS_FIT_CURVE) {
@@ -462,21 +471,25 @@ static void splineik_evaluate_bone(
 
       /* Calculate the tail position with sphere curve intersection. */
       state->prev_tail_seg_idx = position_tail_on_spline(
-          ik_data, vec, sphere_radius, state->prev_tail_seg_idx, pose_tail, &point_end, &rad);
+          ik_data, vec, sphere_radius, state->prev_tail_seg_idx, pose_tail, &point_end, &rad, &rad_nrm);
 
       state->prev_tail_radius = rad;
+      state->prev_tail_radius_normal = rad_nrm;
       copy_v3_v3(state->prev_tail_loc, pose_tail);
 
       apply_curve_transform(ik_data, ob, rad, pose_tail, &radius);
+      apply_curve_transform(ik_data, ob, rad_nrm, pose_tail, &radius_normal);
       state->curve_position = point_end;
     }
     else {
       /* Scale to fit curve end position. */
-      if (BKE_where_on_path(ik_data->tar, point_end, vec, dir, NULL, &rad, NULL)) {
+      if (BKE_where_on_path(ik_data->tar, point_end, vec, dir, NULL, &rad, &rad_nrm, NULL)) {
         state->prev_tail_radius = rad;
+        state->prev_tail_radius_normal = rad_nrm;
         copy_v3_v3(state->prev_tail_loc, vec);
         copy_v3_v3(pose_tail, vec);
         apply_curve_transform(ik_data, ob, rad, pose_tail, &radius);
+        apply_curve_transform(ik_data, ob, rad_nrm, pose_tail, &radius_normal);
       }
     }
 

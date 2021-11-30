@@ -174,6 +174,11 @@ class DATA_PT_geometry_curve(CurveButtonsPanelCurve, Panel):
         sub.prop(curve, "extrude")
 
         col.prop(curve, "taper_object")
+        
+        sub = col.column()
+        sub.active = curve.taper_object is not None
+        sub.prop(curve, "normal_taper_object")
+
         col.prop(curve, "taper_radius_mode")
 
         if type(curve) is not TextCurve:

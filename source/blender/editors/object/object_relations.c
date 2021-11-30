@@ -1844,6 +1844,7 @@ static void single_obdata_users(
                 BKE_id_copy_ex(bmain, ob->data, NULL, LIB_ID_COPY_DEFAULT | LIB_ID_COPY_ACTIONS));
             ID_NEW_REMAP(cu->bevobj);
             ID_NEW_REMAP(cu->taperobj);
+            ID_NEW_REMAP(cu->normaltaperobj);
             break;
           case OB_LATTICE:
             ob->data = lat = ID_NEW_SET(

@@ -932,6 +932,15 @@ static void curve_to_mesh_eval_ensure(Object &object)
     curve.taperobj = &taper_object;
   }
 
+  /* Same thing for taper. */
+  Object normal_taper_object = {{nullptr}};
+  if (curve.normaltaperobj != nullptr) {
+    normal_taper_object = *curve.normaltaperobj;
+    BLI_listbase_clear(&normal_taper_object.modifiers);
+    BKE_object_runtime_reset(&normal_taper_object);
+    curve.normaltaperobj = &normal_taper_object;
+  }
+
   /* NOTE: We don't have dependency graph or scene here, so we pass nullptr. This is all fine since
    * they are only used for modifier stack, which we have explicitly disabled for all objects.
    *

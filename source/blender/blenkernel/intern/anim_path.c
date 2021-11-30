@@ -244,6 +244,7 @@ bool BKE_where_on_path(const Object *ob,
                        float r_dir[3],
                        float r_quat[4],
                        float *r_radius,
+                       float *r_radius_normal,
                        float *r_weight)
 {
   if (ob == NULL || ob->type != OB_CURVE) {
@@ -385,6 +386,11 @@ bool BKE_where_on_path(const Object *ob,
 
   if (r_radius) {
     *r_radius = w[0] * p0->radius + w[1] * p1->radius + w[2] * p2->radius + w[3] * p3->radius;
+  }
+
+  if (r_radius_normal) {
+    *r_radius_normal = w[0] * p0->radius_normal + w[1] * p1->radius_normal +
+                       w[2] * p2->radius_normal + w[3] * p3->radius_normal;
   }
 
   if (r_weight) {

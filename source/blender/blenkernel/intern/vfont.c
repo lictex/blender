@@ -1394,8 +1394,8 @@ static bool vfont_to_curve(Object *ob,
 
         /* calc the right loc AND the right rot separately */
         /* vec, tvec need 4 items */
-        BKE_where_on_path(cu->textoncurve, ctime, vec, tvec, NULL, NULL, NULL);
-        BKE_where_on_path(cu->textoncurve, ctime + dtime, tvec, rotvec, NULL, NULL, NULL);
+        BKE_where_on_path(cu->textoncurve, ctime, vec, tvec, NULL, NULL, NULL, NULL);
+        BKE_where_on_path(cu->textoncurve, ctime + dtime, tvec, rotvec, NULL, NULL, NULL, NULL);
 
         mul_v3_fl(vec, sizefac);
 

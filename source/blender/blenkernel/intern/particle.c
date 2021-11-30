@@ -2398,7 +2398,7 @@ int do_guides(Depsgraph *depsgraph,
 
   float effect[3] = {0.0f, 0.0f, 0.0f}, veffect[3] = {0.0f, 0.0f, 0.0f};
   float guidevec[4], guidedir[3], rot2[4], temp[3];
-  float guidetime, radius, weight, angle, totstrength = 0.0f;
+  float guidetime, radius, radius_normal, weight, angle, totstrength = 0.0f;
   float vec_to_point[3];
 
   if (effectors) {
@@ -2424,14 +2424,20 @@ int do_guides(Depsgraph *depsgraph,
       cu = (Curve *)eff->ob->data;
 
       if (pd->flag & PFIELD_GUIDE_PATH_ADD) {
-        if (BKE_where_on_path(
-                eff->ob, data->strength * guidetime, guidevec, guidedir, NULL, &radius, &weight) ==
-            0) {
+        if (BKE_where_on_path(eff->ob,
+                              data->strength * guidetime,
+                              guidevec,
+                              guidedir,
+                              NULL,
+                              &radius,
+                              &radius_normal,
+                              &weight) == 0) {
           return 0;
         }
       }
       else {
-        if (BKE_where_on_path(eff->ob, guidetime, guidevec, guidedir, NULL, &radius, &weight) ==
+        if (BKE_where_on_path(
+                eff->ob, guidetime, guidevec, guidedir, NULL, &radius, &radius_normal, &weight) ==
             0) {
           return 0;
         }
@@ -2459,16 +2465,19 @@ int do_guides(Depsgraph *depsgraph,
 
       /* curve taper */
       if (cu->taperobj) {
-        mul_v3_fl(vec_to_point,
-                  BKE_displist_calc_taper(depsgraph,
-                                          eff->scene,
-                                          cu->taperobj,
-                                          (int)(data->strength * guidetime * 100.0f),
-                                          100));
+        float r = BKE_displist_calc_taper(
+            depsgraph, eff->scene, cu->taperobj, (int)(data->strength * guidetime * 100.0f), 100);
+        float rn = BKE_displist_calc_taper(
+            depsgraph, eff->scene, cu->normaltaperobj, (int)(data->strength * guidetime * 100.0f), 100);
+        vec_to_point[0] *= r;
+        vec_to_point[1] *= rn;
+        vec_to_point[2] *= r; //?
       }
       else { /* Curve size. */
         if (cu->flag & CU_PATH_RADIUS) {
-          mul_v3_fl(vec_to_point, radius);
+          vec_to_point[0] *= radius;
+          vec_to_point[1] *= radius_normal;
+          vec_to_point[2] *= radius;  //?
         }
       }
 

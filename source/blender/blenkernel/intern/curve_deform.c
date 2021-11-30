@@ -78,7 +78,7 @@ static bool calc_curve_deform(
     const Object *ob_curve, float co[3], const short axis, const CurveDeform *cd, float r_quat[4])
 {
   Curve *cu = ob_curve->data;
-  float fac, loc[4], dir[3], new_quat[4], radius;
+  float fac, loc[4], dir[3], new_quat[4], radius, radius_normal;
   short index;
   const bool is_neg_axis = (axis > 2);
 
@@ -137,7 +137,8 @@ static bool calc_curve_deform(
     }
   }
 
-  if (BKE_where_on_path(ob_curve, fac, loc, dir, new_quat, &radius, NULL)) { /* returns OK */
+  if (BKE_where_on_path(
+          ob_curve, fac, loc, dir, new_quat, &radius, &radius_normal, NULL)) { /* returns OK */
     float quat[4], cent[3];
 
     if (cd->no_rot_axis) { /* set by caller */
@@ -182,7 +183,9 @@ static bool calc_curve_deform(
 
     /* scale if enabled */
     if (cu->flag & CU_PATH_RADIUS) {
-      mul_v3_fl(cent, radius);
+      cent[0] *= radius;
+      cent[1] *= radius_normal;
+      cent[2] *= radius;
     }
 
     /* local rotation */

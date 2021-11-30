@@ -2259,6 +2259,11 @@ void DepsgraphRelationBuilder::build_object_data_geometry_datablock(ID *obdata)
         add_relation(taperob_key, obdata_geom_eval_key, "Curve Taper");
         build_object(cu->taperobj);
       }
+      if (cu->normaltaperobj != nullptr) {
+        ComponentKey taperob_key(&cu->normaltaperobj->id, NodeType::GEOMETRY);
+        add_relation(taperob_key, obdata_geom_eval_key, "Curve Normal Taper");
+        build_object(cu->normaltaperobj);
+      }
       if (cu->textoncurve != nullptr) {
         ComponentKey textoncurve_geom_key(&cu->textoncurve->id, NodeType::GEOMETRY);
         add_relation(textoncurve_geom_key, obdata_geom_eval_key, "Text on Curve Geometry");

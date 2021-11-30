@@ -2727,6 +2727,67 @@ void CURVE_OT_radius_set(wmOperatorType *ot)
       ot->srna, "radius", 1.0f, 0.0f, OBJECT_ADD_SIZE_MAXF, "Radius", "", 0.0001f, 10.0f);
 }
 
+static int set_radius_normal_exec(bContext *C, wmOperator *op)
+{
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  uint objects_len;
+  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+      view_layer, CTX_wm_view3d(C), &objects_len);
+
+  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
+    Object *obedit = objects[ob_index];
+    ListBase *editnurb = object_editcurve_get(obedit);
+    BezTriple *bezt;
+    BPoint *bp;
+    float radius = RNA_float_get(op->ptr, "radius_normal");
+    int a;
+
+    LISTBASE_FOREACH (Nurb *, nu, editnurb) {
+      if (nu->bezt) {
+        for (bezt = nu->bezt, a = 0; a < nu->pntsu; a++, bezt++) {
+          if (bezt->f2 & SELECT) {
+            bezt->radius_normal = radius;
+          }
+        }
+      }
+      else if (nu->bp) {
+        for (bp = nu->bp, a = 0; a < nu->pntsu * nu->pntsv; a++, bp++) {
+          if (bp->f1 & SELECT) {
+            bp->radius_normal = radius;
+          }
+        }
+      }
+    }
+
+    WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
+    DEG_id_tag_update(obedit->data, 0);
+  }
+
+  MEM_freeN(objects);
+
+  return OPERATOR_FINISHED;
+}
+
+void CURVE_OT_radius_normal_set(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Set Curve Normal Radius";
+  ot->description = "Set per-point radius which is used for bevel tapering";
+  ot->idname = "CURVE_OT_radius_normal_set";
+
+  /* api callbacks */
+  ot->exec = set_radius_normal_exec;
+  ot->invoke = WM_operator_props_popup;
+  ot->poll = ED_operator_editsurfcurve;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* properties */
+  RNA_def_float(
+      ot->srna, "radius_normal", 1.0f, 0.0f, OBJECT_ADD_SIZE_MAXF, "Normal Radius", "", 0.0001f, 10.0f);
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */

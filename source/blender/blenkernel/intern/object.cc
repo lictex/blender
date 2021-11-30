@@ -3337,7 +3337,7 @@ void BKE_object_matrix_local_get(struct Object *ob, float r_mat[4][4])
 static bool ob_parcurve(Object *ob, Object *par, float r_mat[4][4])
 {
   Curve *cu = (Curve *)par->data;
-  float vec[4], dir[3], quat[4], radius, ctime;
+  float vec[4], dir[3], quat[4], radius, radius_normal, ctime;
 
   /* NOTE: Curve cache is supposed to be evaluated here already, however there
    * are cases where we can not guarantee that. This includes, for example,
@@ -3374,8 +3374,14 @@ static bool ob_parcurve(Object *ob, Object *par, float r_mat[4][4])
   unit_m4(r_mat);
 
   /* vec: 4 items! */
-  if (BKE_where_on_path(
-          par, ctime, vec, dir, (cu->flag & CU_FOLLOW) ? quat : nullptr, &radius, nullptr)) {
+  if (BKE_where_on_path(par,
+                        ctime,
+                        vec,
+                        dir,
+                        (cu->flag & CU_FOLLOW) ? quat : nullptr,
+                        &radius,
+                        &radius_normal,
+                        nullptr)) {
     if (cu->flag & CU_FOLLOW) {
       quat_apply_track(quat, ob->trackflag, ob->upflag);
       normalize_qt(quat);
@@ -3383,7 +3389,9 @@ static bool ob_parcurve(Object *ob, Object *par, float r_mat[4][4])
     }
     if (cu->flag & CU_PATH_RADIUS) {
       float tmat[4][4], rmat[4][4];
-      scale_m4_fl(tmat, radius);
+      scale_m4_fl(tmat, 1.0f);
+      const float fl[3] = {radius, radius_normal, radius};
+      rescale_m4(tmat, fl);
       mul_m4_m4m4(rmat, tmat, r_mat);
       copy_m4_m4(r_mat, rmat);
     }
@@ -5186,6 +5194,9 @@ int BKE_object_is_deform_modified(Scene *scene, Object *ob)
   if (ob->type == OB_CURVE) {
     Curve *cu = (Curve *)ob->data;
     if (cu->taperobj != nullptr && object_deforms_in_time(cu->taperobj)) {
+      flag |= eModifierMode_Realtime | eModifierMode_Render;
+    }
+    if (cu->normaltaperobj != nullptr && object_deforms_in_time(cu->normaltaperobj)) {
       flag |= eModifierMode_Realtime | eModifierMode_Render;
     }
   }
