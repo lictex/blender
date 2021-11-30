@@ -1568,6 +1568,9 @@ void DepsgraphNodeBuilder::build_object_data_geometry_datablock(ID *obdata)
       if (cu->taperobj != nullptr) {
         build_object(-1, cu->taperobj, DEG_ID_LINKED_INDIRECTLY, false);
       }
+      if (cu->normaltaperobj != nullptr) {
+        build_object(-1, cu->normaltaperobj, DEG_ID_LINKED_INDIRECTLY, false);
+      }
       if (cu->textoncurve != nullptr) {
         build_object(-1, cu->textoncurve, DEG_ID_LINKED_INDIRECTLY, false);
       }

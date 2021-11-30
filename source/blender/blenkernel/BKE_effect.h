@@ -95,7 +95,7 @@ typedef struct EffectorCache {
 
   /* precalculated for guides */
   struct GuideEffectorData *guide_data;
-  float guide_loc[4], guide_dir[3], guide_radius;
+  float guide_loc[4], guide_dir[3], guide_radius, guide_radius_normal;
 
   float frame;
   int flag;
