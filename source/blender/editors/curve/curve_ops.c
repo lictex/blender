@@ -80,6 +80,7 @@ void ED_operatortypes_curve(void)
 
   WM_operatortype_append(CURVE_OT_spline_type_set);
   WM_operatortype_append(CURVE_OT_radius_set);
+  WM_operatortype_append(CURVE_OT_radius_normal_set);
   WM_operatortype_append(CURVE_OT_spline_weight_set);
   WM_operatortype_append(CURVE_OT_handle_type_set);
   WM_operatortype_append(CURVE_OT_normals_make_consistent);

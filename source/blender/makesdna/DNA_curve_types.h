@@ -213,7 +213,7 @@ typedef struct Curve {
   /** Edited data, not in file, use pointer so we can check for it. */
   EditNurb *editnurb;
 
-  struct Object *bevobj, *taperobj, *textoncurve;
+  struct Object *bevobj, *taperobj, *normaltaperobj, *textoncurve;
   /** Old animation system, deprecated for 2.5. */
   struct Ipo *ipo DNA_DEPRECATED;
   struct Key *key;
