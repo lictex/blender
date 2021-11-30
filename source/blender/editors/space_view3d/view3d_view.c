@@ -699,6 +699,7 @@ void VIEW3D_OT_object_as_camera(wmOperatorType *ot)
 /**
  * \param rect: optional for picking (can be NULL).
  */
+#pragma clang optimize off
 void view3d_winmatrix_set(Depsgraph *depsgraph,
                           ARegion *region,
                           const View3D *v3d,
@@ -747,6 +748,7 @@ void view3d_winmatrix_set(Depsgraph *depsgraph,
   /* update matrix in 3d view region */
   GPU_matrix_projection_get(rv3d->winmat);
 }
+#pragma clang optimize on
 
 static void obmat_to_viewmat(RegionView3D *rv3d, Object *ob)
 {
