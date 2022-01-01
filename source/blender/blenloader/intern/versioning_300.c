@@ -2547,6 +2547,23 @@ void blo_do_versions_300(FileData *fd, Library *UNUSED(lib), Main *bmain)
         version_node_input_socket_name(ntree, GEO_NODE_TRANSFER_ATTRIBUTE, "Target", "Source");
       }
     }
+
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type != NTREE_COMPOSIT) {
+        continue;
+      }
+      LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+        if (node->type == CMP_NODE_SCALE && node->storage == NULL) {
+          NodeScaleData *data = (NodeScaleData *)MEM_callocN(sizeof(NodeScaleData), __func__);
+          data->space = node->custom1;
+          data->frame_method = node->custom2;
+          data->offset_x = node->custom3;
+          data->offset_y = node->custom4;
+          node->storage = data;
+        }
+      }
+    }
+    FOREACH_NODETREE_END;
   }
 
   /**
