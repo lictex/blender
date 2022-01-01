@@ -42,10 +42,17 @@ static void cmp_node_scale_declare(NodeDeclarationBuilder &b)
 
 }  // namespace blender::nodes
 
+static void node_composite_init_scale(bNodeTree *UNUSED(ntree), bNode *node)
+{
+  NodeScaleData *data = (NodeScaleData *)MEM_callocN(sizeof(NodeScaleData), "node scale data");
+  node->storage = data;
+}
+
 static void node_composite_update_scale(bNodeTree *ntree, bNode *node)
 {
   bNodeSocket *sock;
-  bool use_xy_scale = ELEM(node->custom1, CMP_SCALE_RELATIVE, CMP_SCALE_ABSOLUTE);
+  NodeScaleData *data = (NodeScaleData *)node->storage;
+  bool use_xy_scale = ELEM(data->space, CMP_SCALE_RELATIVE, CMP_SCALE_ABSOLUTE);
 
   /* Only show X/Y scale factor inputs for modes using them! */
   for (sock = (bNodeSocket *)node->inputs.first; sock; sock = sock->next) {
@@ -55,8 +62,9 @@ static void node_composite_update_scale(bNodeTree *ntree, bNode *node)
   }
 }
 
-static void node_composit_buts_scale(uiLayout *layout, bContext *UNUSED(C), PointerRNA *ptr)
+static void node_composite_buts_scale(uiLayout *layout, bContext *UNUSED(C), PointerRNA *ptr)
 {
+  uiItemR(layout, ptr, "filter_type", UI_ITEM_R_SPLIT_EMPTY_NAME, "", ICON_NONE);
   uiItemR(layout, ptr, "space", UI_ITEM_R_SPLIT_EMPTY_NAME, "", ICON_NONE);
 
   if (RNA_enum_get(ptr, "space") == CMP_SCALE_RENDERPERCENT) {
@@ -79,7 +87,10 @@ void register_node_type_cmp_scale()
 
   cmp_node_type_base(&ntype, CMP_NODE_SCALE, "Scale", NODE_CLASS_DISTORT, 0);
   ntype.declare = blender::nodes::cmp_node_scale_declare;
-  ntype.draw_buttons = node_composit_buts_scale;
+  ntype.draw_buttons = node_composite_buts_scale;
+  node_type_init(&ntype, node_composite_init_scale);
+  node_type_storage(
+      &ntype, "NodeScaleData", node_free_standard_storage, node_copy_standard_storage);
   node_type_update(&ntype, node_composite_update_scale);
 
   nodeRegisterType(&ntype);

@@ -2474,6 +2474,24 @@ void blo_do_versions_300(FileData *fd, Library *UNUSED(lib), Main *bmain)
    * \note Keep this message at the bottom of the function.
    */
   {
+    if (!MAIN_VERSION_ATLEAST(bmain, 301, 6)) {
+      FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+        if (ntree->type != NTREE_COMPOSIT) {
+          continue;
+        }
+        LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+          if (node->type == CMP_NODE_SCALE && node->storage == NULL) {
+            NodeScaleData *data = (NodeScaleData *)MEM_callocN(sizeof(NodeScaleData), __func__);
+            data->space = node->custom1;
+            data->frame_method = node->custom2;
+            data->offset_x = node->custom3;
+            data->offset_y = node->custom4;
+            node->storage = data;
+          }
+        }
+      }
+      FOREACH_NODETREE_END;
+    }
     /* Keep this block, even when empty. */
   }
 }

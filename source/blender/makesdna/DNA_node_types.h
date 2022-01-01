@@ -787,6 +787,12 @@ typedef struct NodeBlurData {
   int image_in_width, image_in_height;
 } NodeBlurData;
 
+typedef struct NodeScaleData {
+  short space, frame_method, filter_type;
+  char _pad[2];
+  float offset_x, offset_y;
+} NodeScaleData;
+
 typedef struct NodeDBlurData {
   float center_x, center_y, distance, angle, spin, zoom;
   short iter;

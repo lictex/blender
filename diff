@@ -1,0 +1,235 @@
+diff --git a/source/blender/blenloader/intern/versioning_300.c b/source/blender/blenloader/intern/versioning_300.c
+index bc3cd7a09cb..72ee2d01873 100644
+--- a/source/blender/blenloader/intern/versioning_300.c
++++ b/source/blender/blenloader/intern/versioning_300.c
+@@ -2474,6 +2474,24 @@ void blo_do_versions_300(FileData *fd, Library *UNUSED(lib), Main *bmain)
+    * \note Keep this message at the bottom of the function.
+    */
+   {
++    if (!MAIN_VERSION_ATLEAST(bmain, 301, 6)) {
++      FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
++        if (ntree->type != NTREE_COMPOSIT) {
++          continue;
++        }
++        LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
++          if (node->type == CMP_NODE_SCALE && node->storage == NULL) {
++            NodeScaleData *data = (NodeScaleData *)MEM_callocN(sizeof(NodeScaleData), __func__);
++            data->space = node->custom1;
++            data->frame_method = node->custom2;
++            data->offset_x = node->custom3;
++            data->offset_y = node->custom4;
++            node->storage = data;
++          }
++        }
++      }
++      FOREACH_NODETREE_END;
++    }
+     /* Keep this block, even when empty. */
+   }
+ }
+diff --git a/source/blender/compositor/nodes/COM_ScaleNode.cc b/source/blender/compositor/nodes/COM_ScaleNode.cc
+index 56f1d998db8..87db3c91186 100644
+--- a/source/blender/compositor/nodes/COM_ScaleNode.cc
++++ b/source/blender/compositor/nodes/COM_ScaleNode.cc
+@@ -21,6 +21,7 @@
+ #include "BKE_node.h"
+ #include "COM_ScaleOperation.h"
+ #include "COM_SetValueOperation.h"
++#include "COM_SetSamplerOperation.h"
+ 
+ namespace blender::compositor {
+ 
+@@ -33,18 +34,24 @@ void ScaleNode::convert_to_operations(NodeConverter &converter,
+                                       const CompositorContext &context) const
+ {
+   bNode *bnode = this->get_bnode();
++  NodeScaleData *data = (NodeScaleData *)bnode->storage;
+ 
+   NodeInput *input_socket = this->get_input_socket(0);
+   NodeInput *input_xsocket = this->get_input_socket(1);
+   NodeInput *input_ysocket = this->get_input_socket(2);
+   NodeOutput *output_socket = this->get_output_socket(0);
+ 
+-  switch (bnode->custom1) {
++  switch (data->space) {
+     case CMP_SCALE_RELATIVE: {
++      SetSamplerOperation *sampler = new SetSamplerOperation();
++      sampler->set_sampler((PixelSampler)data->filter_type);
++      converter.add_operation(sampler);
++      converter.map_input_socket(input_socket, sampler->get_input_socket(0));
++
+       ScaleRelativeOperation *operation = new ScaleRelativeOperation();
+       converter.add_operation(operation);
+ 
+-      converter.map_input_socket(input_socket, operation->get_input_socket(0));
++      converter.add_link(sampler->get_output_socket(), operation->get_input_socket(0));
+       converter.map_input_socket(input_xsocket, operation->get_input_socket(1));
+       converter.map_input_socket(input_ysocket, operation->get_input_socket(2));
+       converter.map_output_socket(output_socket, operation->get_output_socket(0));
+@@ -55,6 +62,11 @@ void ScaleNode::convert_to_operations(NodeConverter &converter,
+       break;
+     }
+     case CMP_SCALE_SCENEPERCENT: {
++      SetSamplerOperation *sampler = new SetSamplerOperation();
++      sampler->set_sampler((PixelSampler)data->filter_type);
++      converter.add_operation(sampler);
++      converter.map_input_socket(input_socket, sampler->get_input_socket(0));
++
+       SetValueOperation *scale_factor_operation = new SetValueOperation();
+       scale_factor_operation->set_value(context.get_render_percentage_as_factor());
+       converter.add_operation(scale_factor_operation);
+@@ -62,7 +74,7 @@ void ScaleNode::convert_to_operations(NodeConverter &converter,
+       ScaleRelativeOperation *operation = new ScaleRelativeOperation();
+       converter.add_operation(operation);
+ 
+-      converter.map_input_socket(input_socket, operation->get_input_socket(0));
++      converter.add_link(sampler->get_output_socket(), operation->get_input_socket(0));
+       converter.add_link(scale_factor_operation->get_output_socket(),
+                          operation->get_input_socket(1));
+       converter.add_link(scale_factor_operation->get_output_socket(),
+@@ -75,18 +87,23 @@ void ScaleNode::convert_to_operations(NodeConverter &converter,
+       break;
+     }
+     case CMP_SCALE_RENDERPERCENT: {
++      SetSamplerOperation *sampler = new SetSamplerOperation();
++      sampler->set_sampler((PixelSampler)data->filter_type);
++      converter.add_operation(sampler);
++      converter.map_input_socket(input_socket, sampler->get_input_socket(0));
++
+       const RenderData *rd = context.get_render_data();
+       const float render_size_factor = context.get_render_percentage_as_factor();
+       ScaleFixedSizeOperation *operation = new ScaleFixedSizeOperation();
+       /* framing options */
+-      operation->set_is_aspect((bnode->custom2 & CMP_SCALE_RENDERSIZE_FRAME_ASPECT) != 0);
+-      operation->set_is_crop((bnode->custom2 & CMP_SCALE_RENDERSIZE_FRAME_CROP) != 0);
+-      operation->set_offset(bnode->custom3, bnode->custom4);
++      operation->set_is_aspect((data->frame_method & CMP_SCALE_RENDERSIZE_FRAME_ASPECT) != 0);
++      operation->set_is_crop((data->frame_method & CMP_SCALE_RENDERSIZE_FRAME_CROP) != 0);
++      operation->set_offset(data->offset_x, data->offset_y);
+       operation->set_new_width(rd->xsch * render_size_factor);
+       operation->set_new_height(rd->ysch * render_size_factor);
+       converter.add_operation(operation);
+ 
+-      converter.map_input_socket(input_socket, operation->get_input_socket(0));
++      converter.add_link(sampler->get_output_socket(), operation->get_input_socket(0));
+       converter.map_output_socket(output_socket, operation->get_output_socket(0));
+ 
+       operation->set_variable_size(input_xsocket->is_linked() || input_ysocket->is_linked());
+@@ -96,10 +113,15 @@ void ScaleNode::convert_to_operations(NodeConverter &converter,
+     }
+     case CMP_SCALE_ABSOLUTE: {
+       /* TODO: what is the use of this one.... perhaps some issues when the ui was updated... */
++      SetSamplerOperation *sampler = new SetSamplerOperation();
++      sampler->set_sampler((PixelSampler)data->filter_type);
++      converter.add_operation(sampler);
++      converter.map_input_socket(input_socket, sampler->get_input_socket(0));
++
+       ScaleAbsoluteOperation *operation = new ScaleAbsoluteOperation();
+       converter.add_operation(operation);
+ 
+-      converter.map_input_socket(input_socket, operation->get_input_socket(0));
++      converter.add_link(sampler->get_output_socket(), operation->get_input_socket(0));
+       converter.map_input_socket(input_xsocket, operation->get_input_socket(1));
+       converter.map_input_socket(input_ysocket, operation->get_input_socket(2));
+       converter.map_output_socket(output_socket, operation->get_output_socket(0));
+diff --git a/source/blender/makesdna/DNA_node_types.h b/source/blender/makesdna/DNA_node_types.h
+index dc5acb9d5b2..8218c9daa26 100644
+--- a/source/blender/makesdna/DNA_node_types.h
++++ b/source/blender/makesdna/DNA_node_types.h
+@@ -787,6 +787,12 @@ typedef struct NodeBlurData {
+   int image_in_width, image_in_height;
+ } NodeBlurData;
+ 
++typedef struct NodeScaleData {
++  short space, frame_method, filter_type;
++  char _pad[2];
++  float offset_x, offset_y;
++} NodeScaleData;
++
+ typedef struct NodeDBlurData {
+   float center_x, center_y, distance, angle, spin, zoom;
+   short iter;
+diff --git a/source/blender/makesrna/intern/rna_nodetree.c b/source/blender/makesrna/intern/rna_nodetree.c
+index df0271d81d5..61b396afb74 100644
+--- a/source/blender/makesrna/intern/rna_nodetree.c
++++ b/source/blender/makesrna/intern/rna_nodetree.c
+@@ -7232,26 +7232,29 @@ static void def_cmp_scale(StructRNA *srna)
+       {0, NULL, 0, NULL, NULL},
+   };
+ 
++  RNA_def_struct_sdna_from(srna, "NodeScaleData", "storage");
++
++  prop = RNA_def_property(srna, "filter_type", PROP_ENUM, PROP_NONE);
++  RNA_def_property_enum_items(prop, node_sampler_type_items);
++  RNA_def_property_ui_text(prop, "Filter", "Method to use to filter scale");
++  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
++
+   prop = RNA_def_property(srna, "space", PROP_ENUM, PROP_NONE);
+-  RNA_def_property_enum_sdna(prop, NULL, "custom1");
+   RNA_def_property_enum_items(prop, space_items);
+   RNA_def_property_ui_text(prop, "Space", "Coordinate space to scale relative to");
+   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_CompositorNodeScale_update");
+ 
+   /* expose 2 flags as a enum of 3 items */
+   prop = RNA_def_property(srna, "frame_method", PROP_ENUM, PROP_NONE);
+-  RNA_def_property_enum_bitflag_sdna(prop, NULL, "custom2");
+   RNA_def_property_enum_items(prop, space_frame_items);
+   RNA_def_property_ui_text(prop, "Frame Method", "How the image fits in the camera frame");
+   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+ 
+   prop = RNA_def_property(srna, "offset_x", PROP_FLOAT, PROP_NONE);
+-  RNA_def_property_float_sdna(prop, NULL, "custom3");
+   RNA_def_property_ui_text(prop, "X Offset", "Offset image horizontally (factor of image size)");
+   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+ 
+   prop = RNA_def_property(srna, "offset_y", PROP_FLOAT, PROP_NONE);
+-  RNA_def_property_float_sdna(prop, NULL, "custom4");
+   RNA_def_property_ui_text(prop, "Y Offset", "Offset image vertically (factor of image size)");
+   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+ }
+diff --git a/source/blender/nodes/composite/nodes/node_composite_scale.cc b/source/blender/nodes/composite/nodes/node_composite_scale.cc
+index 98c9f6619f4..083986ce4a9 100644
+--- a/source/blender/nodes/composite/nodes/node_composite_scale.cc
++++ b/source/blender/nodes/composite/nodes/node_composite_scale.cc
+@@ -42,10 +42,17 @@ static void cmp_node_scale_declare(NodeDeclarationBuilder &b)
+ 
+ }  // namespace blender::nodes
+ 
++static void node_composite_init_scale(bNodeTree *UNUSED(ntree), bNode *node)
++{
++  NodeScaleData *data = (NodeScaleData *)MEM_callocN(sizeof(NodeScaleData), "node scale data");
++  node->storage = data;
++}
++
+ static void node_composite_update_scale(bNodeTree *ntree, bNode *node)
+ {
+   bNodeSocket *sock;
+-  bool use_xy_scale = ELEM(node->custom1, CMP_SCALE_RELATIVE, CMP_SCALE_ABSOLUTE);
++  NodeScaleData *data = (NodeScaleData *)node->storage;
++  bool use_xy_scale = ELEM(data->space, CMP_SCALE_RELATIVE, CMP_SCALE_ABSOLUTE);
+ 
+   /* Only show X/Y scale factor inputs for modes using them! */
+   for (sock = (bNodeSocket *)node->inputs.first; sock; sock = sock->next) {
+@@ -55,8 +62,9 @@ static void node_composite_update_scale(bNodeTree *ntree, bNode *node)
+   }
+ }
+ 
+-static void node_composit_buts_scale(uiLayout *layout, bContext *UNUSED(C), PointerRNA *ptr)
++static void node_composite_buts_scale(uiLayout *layout, bContext *UNUSED(C), PointerRNA *ptr)
+ {
++  uiItemR(layout, ptr, "filter_type", UI_ITEM_R_SPLIT_EMPTY_NAME, "", ICON_NONE);
+   uiItemR(layout, ptr, "space", UI_ITEM_R_SPLIT_EMPTY_NAME, "", ICON_NONE);
+ 
+   if (RNA_enum_get(ptr, "space") == CMP_SCALE_RENDERPERCENT) {
+@@ -79,7 +87,10 @@ void register_node_type_cmp_scale()
+ 
+   cmp_node_type_base(&ntype, CMP_NODE_SCALE, "Scale", NODE_CLASS_DISTORT, 0);
+   ntype.declare = blender::nodes::cmp_node_scale_declare;
+-  ntype.draw_buttons = node_composit_buts_scale;
++  ntype.draw_buttons = node_composite_buts_scale;
++  node_type_init(&ntype, node_composite_init_scale);
++  node_type_storage(
++      &ntype, "NodeScaleData", node_free_standard_storage, node_copy_standard_storage);
+   node_type_update(&ntype, node_composite_update_scale);
+ 
+   nodeRegisterType(&ntype);
