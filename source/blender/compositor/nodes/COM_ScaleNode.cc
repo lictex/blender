@@ -21,6 +21,7 @@
 #include "BKE_node.h"
 #include "COM_ScaleOperation.h"
 #include "COM_SetValueOperation.h"
+#include "COM_SetSamplerOperation.h"
 
 namespace blender::compositor {
 
@@ -33,18 +34,24 @@ void ScaleNode::convert_to_operations(NodeConverter &converter,
                                       const CompositorContext &context) const
 {
   bNode *bnode = this->get_bnode();
+  NodeScaleData *data = (NodeScaleData *)bnode->storage;
 
   NodeInput *input_socket = this->get_input_socket(0);
   NodeInput *input_xsocket = this->get_input_socket(1);
   NodeInput *input_ysocket = this->get_input_socket(2);
   NodeOutput *output_socket = this->get_output_socket(0);
 
-  switch (bnode->custom1) {
+  switch (data->space) {
     case CMP_SCALE_RELATIVE: {
+      SetSamplerOperation *sampler = new SetSamplerOperation();
+      sampler->set_sampler((PixelSampler)data->filter_type);
+      converter.add_operation(sampler);
+      converter.map_input_socket(input_socket, sampler->get_input_socket(0));
+
       ScaleRelativeOperation *operation = new ScaleRelativeOperation();
       converter.add_operation(operation);
 
-      converter.map_input_socket(input_socket, operation->get_input_socket(0));
+      converter.add_link(sampler->get_output_socket(), operation->get_input_socket(0));
       converter.map_input_socket(input_xsocket, operation->get_input_socket(1));
       converter.map_input_socket(input_ysocket, operation->get_input_socket(2));
       converter.map_output_socket(output_socket, operation->get_output_socket(0));
@@ -55,6 +62,11 @@ void ScaleNode::convert_to_operations(NodeConverter &converter,
       break;
     }
     case CMP_SCALE_SCENEPERCENT: {
+      SetSamplerOperation *sampler = new SetSamplerOperation();
+      sampler->set_sampler((PixelSampler)data->filter_type);
+      converter.add_operation(sampler);
+      converter.map_input_socket(input_socket, sampler->get_input_socket(0));
+
       SetValueOperation *scale_factor_operation = new SetValueOperation();
       scale_factor_operation->set_value(context.get_render_percentage_as_factor());
       converter.add_operation(scale_factor_operation);
@@ -62,7 +74,7 @@ void ScaleNode::convert_to_operations(NodeConverter &converter,
       ScaleRelativeOperation *operation = new ScaleRelativeOperation();
       converter.add_operation(operation);
 
-      converter.map_input_socket(input_socket, operation->get_input_socket(0));
+      converter.add_link(sampler->get_output_socket(), operation->get_input_socket(0));
       converter.add_link(scale_factor_operation->get_output_socket(),
                          operation->get_input_socket(1));
       converter.add_link(scale_factor_operation->get_output_socket(),
@@ -75,18 +87,23 @@ void ScaleNode::convert_to_operations(NodeConverter &converter,
       break;
     }
     case CMP_SCALE_RENDERPERCENT: {
+      SetSamplerOperation *sampler = new SetSamplerOperation();
+      sampler->set_sampler((PixelSampler)data->filter_type);
+      converter.add_operation(sampler);
+      converter.map_input_socket(input_socket, sampler->get_input_socket(0));
+
       const RenderData *rd = context.get_render_data();
       const float render_size_factor = context.get_render_percentage_as_factor();
       ScaleFixedSizeOperation *operation = new ScaleFixedSizeOperation();
       /* framing options */
-      operation->set_is_aspect((bnode->custom2 & CMP_SCALE_RENDERSIZE_FRAME_ASPECT) != 0);
-      operation->set_is_crop((bnode->custom2 & CMP_SCALE_RENDERSIZE_FRAME_CROP) != 0);
-      operation->set_offset(bnode->custom3, bnode->custom4);
+      operation->set_is_aspect((data->frame_method & CMP_SCALE_RENDERSIZE_FRAME_ASPECT) != 0);
+      operation->set_is_crop((data->frame_method & CMP_SCALE_RENDERSIZE_FRAME_CROP) != 0);
+      operation->set_offset(data->offset_x, data->offset_y);
       operation->set_new_width(rd->xsch * render_size_factor);
       operation->set_new_height(rd->ysch * render_size_factor);
       converter.add_operation(operation);
 
-      converter.map_input_socket(input_socket, operation->get_input_socket(0));
+      converter.add_link(sampler->get_output_socket(), operation->get_input_socket(0));
       converter.map_output_socket(output_socket, operation->get_output_socket(0));
 
       operation->set_variable_size(input_xsocket->is_linked() || input_ysocket->is_linked());
@@ -96,10 +113,15 @@ void ScaleNode::convert_to_operations(NodeConverter &converter,
     }
     case CMP_SCALE_ABSOLUTE: {
       /* TODO: what is the use of this one.... perhaps some issues when the ui was updated... */
+      SetSamplerOperation *sampler = new SetSamplerOperation();
+      sampler->set_sampler((PixelSampler)data->filter_type);
+      converter.add_operation(sampler);
+      converter.map_input_socket(input_socket, sampler->get_input_socket(0));
+
       ScaleAbsoluteOperation *operation = new ScaleAbsoluteOperation();
       converter.add_operation(operation);
 
-      converter.map_input_socket(input_socket, operation->get_input_socket(0));
+      converter.add_link(sampler->get_output_socket(), operation->get_input_socket(0));
       converter.map_input_socket(input_xsocket, operation->get_input_socket(1));
       converter.map_input_socket(input_ysocket, operation->get_input_socket(2));
       converter.map_output_socket(output_socket, operation->get_output_socket(0));
