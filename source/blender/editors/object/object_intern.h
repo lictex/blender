@@ -85,6 +85,7 @@ void OBJECT_OT_move_to_collection(struct wmOperatorType *ot);
 void OBJECT_OT_link_to_collection(struct wmOperatorType *ot);
 
 void OBJECT_OT_transfer_mode(struct wmOperatorType *ot);
+void OBJECT_OT_geom_attribute_paste(struct wmOperatorType *ot);
 
 /* object_select.c */
 

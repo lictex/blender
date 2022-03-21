@@ -2145,3 +2145,104 @@ void OBJECT_OT_link_to_collection(wmOperatorType *ot)
 }
 
 /** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Geometry Attribute Paste Operator
+ * \{ */
+
+static bool geom_attribute_paste_poll(bContext *C)
+{
+  Object *ob = ED_object_context(C);
+  if (ob && ob->type == OB_MESH && BKE_object_is_in_editmode(ob)) {
+    BMesh *bm = ((Mesh *)ob->data)->edit_mesh->bm;
+    if ((BM_mesh_active_vert_get(bm) || BM_mesh_active_edge_get(bm) ||
+         (BM_mesh_active_face_get(bm, false, true) && bm->selectmode == SCE_SELECT_FACE))) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static int geom_attribute_paste_exec(bContext *C, wmOperator *op)
+{
+  Object *ob = ED_object_context(C);
+  Mesh *me = ob->data;
+  BMesh *bm = me->edit_mesh->bm;
+  BMElem *act_elem;
+  switch (bm->selectmode) {
+    case SCE_SELECT_VERTEX:
+      act_elem = (BMElem *)BM_mesh_active_vert_get(bm);
+      break;
+    case SCE_SELECT_EDGE:
+      act_elem = (BMElem *)BM_mesh_active_edge_get(bm);
+      break;
+    case SCE_SELECT_FACE:
+      act_elem = (BMElem *)BM_mesh_active_face_get(bm, false, true);
+      break;
+    default:
+      BLI_assert_unreachable();
+      break;
+  }
+
+  CustomData *cd;
+  BMIterType iter_ty;
+  switch (act_elem->head.htype) {
+    case BM_VERT:
+      cd = &bm->vdata;
+      iter_ty = BM_VERTS_OF_MESH;
+      break;
+    case BM_EDGE:
+      cd = &bm->edata;
+      iter_ty = BM_EDGES_OF_MESH;
+      break;
+    case BM_FACE:
+      cd = &bm->pdata;
+      iter_ty = BM_FACES_OF_MESH;
+      break;
+    case BM_LOOP:
+      cd = &bm->ldata;
+      iter_ty = BM_LOOPS_OF_FACE;
+      break;
+    default:
+      BLI_assert_unreachable();
+      break;
+  }
+
+  CustomDataLayer *cdl = &cd->layers[RNA_int_get(op->ptr, "index")];
+  void *attr_src = BM_ELEM_CD_GET_VOID_P(act_elem, cdl->offset);
+
+  BMIter iter;
+  BMElem *ele;
+  BM_ITER_MESH (ele, &iter, bm, iter_ty) {
+    if (BM_elem_flag_test(ele, BM_ELEM_SELECT)) {
+      void *attr_dst = BM_ELEM_CD_GET_VOID_P(ele, cdl->offset);
+      memcpy(attr_dst, attr_src, CustomData_sizeof(cdl->type));
+    }
+  }
+
+  DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
+  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
+
+  return OPERATOR_FINISHED;
+}
+
+void OBJECT_OT_geom_attribute_paste(wmOperatorType *ot)
+{
+  PropertyRNA *prop;
+
+  ot->name = "Paste Attribute to Selected";
+  ot->idname = "OBJECT_OT_geom_attribute_paste";
+  ot->description = "Copy this element's attribute to other selected elements";
+
+  /* api callbacks */
+  ot->poll = geom_attribute_paste_poll;
+  ot->exec = geom_attribute_paste_exec;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  prop = RNA_def_int(ot->srna, "index", -1, -1, INT_MAX, "", "", -1, INT_MAX);
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE | PROP_HIDDEN);
+}
+
+/** \} */

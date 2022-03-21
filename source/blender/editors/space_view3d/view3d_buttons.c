@@ -1464,6 +1464,128 @@ static void view3d_panel_vgroup(const bContext *C, Panel *panel)
   }
 }
 
+static void do_view3d_geom_attr_buttons(bContext *C, void *UNUSED(arg), int event)
+{
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  Object *ob = view_layer->basact->object;
+  DEG_id_tag_update(ob->data, ID_RECALC_GEOMETRY);
+  WM_event_add_notifier(C, NC_GEOM | ND_DATA, ob->data);
+}
+
+static bool view3d_panel_geom_attr_poll(const bContext *C, PanelType *UNUSED(pt))
+{
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  Object *ob = OBACT(view_layer);
+  if (ob && ob->type == OB_MESH && BKE_object_is_in_editmode(ob)) {
+    BMesh *bm = ((Mesh *)ob->data)->edit_mesh->bm;
+    if ((BM_mesh_active_vert_get(bm) || BM_mesh_active_edge_get(bm) ||
+         (BM_mesh_active_face_get(bm, false, true) && bm->selectmode == SCE_SELECT_FACE))) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static void view3d_panel_geom_attr(const bContext *C, Panel *panel)
+{
+  uiBlock *block = uiLayoutAbsoluteBlock(panel->layout);
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  Object *ob = view_layer->basact->object;
+  Mesh *me = ob->data;
+  BMesh *bm = me->edit_mesh->bm;
+
+  UI_block_func_handle_set(block, do_view3d_geom_attr_buttons, NULL);
+
+  BMElem *elems[] = {(BMElem *)BM_mesh_active_vert_get(bm),
+                     (BMElem *)BM_mesh_active_edge_get(bm),
+                     bm->selectmode == SCE_SELECT_FACE ?
+                         (BMElem *)BM_mesh_active_face_get(bm, false, true) :
+                         NULL};
+  CustomData *cds[] = {&bm->vdata, &bm->edata, &bm->pdata};
+  for (int e = 0; e < 3; e++) {
+    if (elems[e]) {
+      int totlayer = cds[e]->totlayer;
+      for (int i = 0; i < totlayer; i++) {
+        CustomDataLayer cdl = cds[e]->layers[i];
+
+        char r_prop[8];
+        int flag = UI_ITEM_R_SPLIT_EMPTY_NAME;
+        void *srna;
+        uiLayout *layout = uiLayoutRow(panel->layout, true);
+        uiLayout *row = layout;
+        switch (cdl.type) {
+          case CD_PROP_FLOAT: {
+            srna = &RNA_FloatAttributeValue;
+            strcpy(r_prop, "value");
+            break;
+          }
+          case CD_PROP_FLOAT2: {
+            srna = &RNA_Float2AttributeValue;
+            strcpy(r_prop, "vector");
+            flag |= UI_ITEM_R_EXPAND;
+            row = uiLayoutColumn(layout, true);
+            break;
+          }
+          case CD_PROP_FLOAT3: {
+            srna = &RNA_FloatVectorAttributeValue;
+            strcpy(r_prop, "vector");
+            flag |= UI_ITEM_R_EXPAND;
+            row = uiLayoutColumn(layout, true);
+            break;
+          }
+          case CD_PROP_INT8: {
+            srna = &RNA_ByteIntAttributeValue;
+            strcpy(r_prop, "value");
+            break;
+          }
+          case CD_PROP_INT32: {
+            srna = &RNA_IntAttributeValue;
+            strcpy(r_prop, "value");
+            break;
+          }
+          case CD_PROP_BOOL: {
+            srna = &RNA_BoolAttributeValue;
+            strcpy(r_prop, "value");
+            break;
+          }
+          case CD_MLOOPCOL: {
+            srna = &RNA_ByteColorAttributeValue;
+            strcpy(r_prop, "color");
+            break;
+          }
+          case CD_PROP_COLOR: {
+            srna = &RNA_FloatColorAttributeValue;
+            strcpy(r_prop, "color");
+            break;
+          }
+          case CD_PROP_STRING: {
+            srna = &RNA_StringAttributeValue;
+            strcpy(r_prop, "value");
+            break;
+          }
+          default:
+            continue;
+        }
+
+        void *attr = BM_ELEM_CD_GET_VOID_P(elems[e], cdl.offset);
+        PointerRNA attr_ptr;
+        PointerRNA op_ptr;
+        RNA_pointer_create(&me->id, srna, attr, &attr_ptr);
+        uiItemR(row, &attr_ptr, r_prop, flag, cdl.name, ICON_NONE);
+        uiItemFullO(layout,
+                    "OBJECT_OT_geom_attribute_paste",
+                    "",
+                    ICON_PASTEDOWN,
+                    NULL,
+                    WM_OP_INVOKE_DEFAULT,
+                    0,
+                    &op_ptr);
+        RNA_int_set(&op_ptr, "index", i);
+      }
+    }
+  }
+}
+
 static void v3d_transform_butsR(uiLayout *layout, PointerRNA *ptr)
 {
   uiLayout *split, *colsub;
@@ -1782,6 +1904,16 @@ void view3d_buttons_register(ARegionType *art)
   strcpy(pt->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA);
   pt->draw = view3d_panel_vgroup;
   pt->poll = view3d_panel_vgroup_poll;
+  BLI_addtail(&art->paneltypes, pt);
+
+  pt = MEM_callocN(sizeof(PanelType), "spacetype view3d panel attr");
+  strcpy(pt->idname, "VIEW3D_PT_geom_attr");
+  strcpy(pt->label,
+         N_("Geometry Attributes")); /* XXX C panels unavailable through RNA bpy.types! */
+  strcpy(pt->category, "Item");
+  strcpy(pt->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA);
+  pt->draw = view3d_panel_geom_attr;
+  pt->poll = view3d_panel_geom_attr_poll;
   BLI_addtail(&art->paneltypes, pt);
 
   MenuType *mt;
