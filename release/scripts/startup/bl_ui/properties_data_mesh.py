@@ -502,13 +502,17 @@ class MESH_UL_attributes(UIList):
 
         domain_name = self.display_domain_names.get(attribute.domain, "")
 
-        split = layout.split(factor=0.50)
+        split = layout.split(factor=0.4)
         split.emboss = 'NONE'
         split.prop(attribute, "name", text="")
         sub = split.row()
         sub.alignment = 'RIGHT'
-        sub.active = False
-        sub.label(text="%s ▶ %s" % (domain_name, data_type.name))
+        type = sub.row()
+        type.active = False
+        type.label(text="%s ▶ %s" % (domain_name, data_type.name))
+        show = sub.row()
+        icon = 'RESTRICT_VIEW_OFF' if attribute.editmode_show else 'RESTRICT_VIEW_ON'
+        show.prop(attribute, "editmode_show", text="", emboss=False, icon=icon)
 
 
 class DATA_PT_mesh_attributes(MeshButtonsPanel, Panel):

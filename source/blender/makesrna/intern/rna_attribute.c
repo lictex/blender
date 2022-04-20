@@ -156,6 +156,28 @@ static int rna_Attribute_type_get(PointerRNA *ptr)
   return layer->type;
 }
 
+static void rna_Attribute_edit_visibility_set(PointerRNA *ptr, const bool value)
+{
+  ID *id = ptr->owner_id;
+
+  CustomDataLayer *layer = ptr->data;
+  if (value) {
+    layer->flag |= CD_FLAG_EDIT_VISIBLITY;
+  }
+  else {
+    layer->flag &= ~CD_FLAG_EDIT_VISIBLITY;
+  }
+
+  DEG_id_tag_update(id, ID_RECALC_GEOMETRY);
+  WM_main_add_notifier(NC_GEOM | ND_DATA, id);
+}
+
+static int rna_Attribute_edit_visibility_get(PointerRNA *ptr)
+{
+  CustomDataLayer *layer = ptr->data;
+  return layer->flag & CD_FLAG_EDIT_VISIBLITY;
+}
+
 const EnumPropertyItem *rna_enum_attribute_domain_itemf(ID *id,
                                                         bool include_instances,
                                                         bool *r_free)
@@ -892,6 +914,11 @@ static void rna_def_attribute(BlenderRNA *brna)
       prop, "rna_Attribute_domain_get", NULL, "rna_Attribute_domain_itemf");
   RNA_def_property_ui_text(prop, "Domain", "Domain of the Attribute");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+
+  prop = RNA_def_property(srna, "editmode_show", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_funcs(
+      prop, "rna_Attribute_edit_visibility_get", "rna_Attribute_edit_visibility_set");
+  RNA_def_property_ui_text(prop, "Edit Mode Visibility", "");
 
   /* types */
   rna_def_attribute_float(brna);

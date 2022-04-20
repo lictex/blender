@@ -251,7 +251,8 @@ enum {
   /* Indicates external data is read into memory */
   CD_FLAG_IN_MEMORY = (1 << 4),
   CD_FLAG_COLOR_ACTIVE = (1 << 5),
-  CD_FLAG_COLOR_RENDER = (1 << 6)
+  CD_FLAG_COLOR_RENDER = (1 << 6),
+  CD_FLAG_EDIT_VISIBLITY = (1 << 7)
 };
 
 /* Limits */
