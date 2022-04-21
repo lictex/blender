@@ -2155,9 +2155,23 @@ static bool geom_attribute_paste_poll(bContext *C)
   Object *ob = ED_object_context(C);
   if (ob && ob->type == OB_MESH && BKE_object_is_in_editmode(ob)) {
     BMesh *bm = ((Mesh *)ob->data)->edit_mesh->bm;
-    if ((BM_mesh_active_vert_get(bm) || BM_mesh_active_edge_get(bm) ||
-         (BM_mesh_active_face_get(bm, false, true) && bm->selectmode == SCE_SELECT_FACE))) {
-      return true;
+    BMElem *elems[] = {(BMElem *)BM_mesh_active_vert_get(bm),
+                       (BMElem *)BM_mesh_active_edge_get(bm),
+                       // BMesh might keep an active face even if selectmode is not face.
+                       bm->selectmode & SCE_SELECT_FACE ?
+                           (BMElem *)BM_mesh_active_face_get(bm, false, true) :
+                           NULL};
+    CustomData *cds[] = {&bm->vdata, &bm->edata, &bm->pdata};
+    // Check if any editable attribute exists.
+    for (int e = 0; e < 3; e++) {
+      if (elems[e]) {
+        for (int i = 0; i < cds[e]->totlayer; i++) {
+          CustomDataLayer *cdl = &cds[e]->layers[i];
+          if (cdl->flag & CD_FLAG_EDIT_VISIBLITY) {
+            return true;
+          }
+        }
+      }
     }
   }
   return false;
@@ -2169,14 +2183,14 @@ static int geom_attribute_paste_exec(bContext *C, wmOperator *op)
   Mesh *me = ob->data;
   BMesh *bm = me->edit_mesh->bm;
   BMElem *act_elem;
-  switch (bm->selectmode) {
-    case SCE_SELECT_VERTEX:
+  switch (RNA_int_get(op->ptr, "domain")) {
+    case ATTR_DOMAIN_POINT:
       act_elem = (BMElem *)BM_mesh_active_vert_get(bm);
       break;
-    case SCE_SELECT_EDGE:
+    case ATTR_DOMAIN_EDGE:
       act_elem = (BMElem *)BM_mesh_active_edge_get(bm);
       break;
-    case SCE_SELECT_FACE:
+    case ATTR_DOMAIN_FACE:
       act_elem = (BMElem *)BM_mesh_active_face_get(bm, false, true);
       break;
     default:
@@ -2241,7 +2255,9 @@ void OBJECT_OT_geom_attribute_paste(wmOperatorType *ot)
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  prop = RNA_def_int(ot->srna, "index", -1, -1, INT_MAX, "", "", -1, INT_MAX);
+  prop = RNA_def_int(ot->srna, "index", 0, 0, INT_MAX, "", "", 0, INT_MAX);
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE | PROP_HIDDEN);
+  prop = RNA_def_int(ot->srna, "domain", 0, 0, 3, "", "", 0, 3);
   RNA_def_property_flag(prop, PROP_SKIP_SAVE | PROP_HIDDEN);
 }
 

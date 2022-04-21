@@ -1517,10 +1517,10 @@ static void view3d_panel_geom_attr(const bContext *C, Panel *panel)
                          (BMElem *)BM_mesh_active_face_get(bm, false, true) :
                          NULL};
   CustomData *cds[] = {&bm->vdata, &bm->edata, &bm->pdata};
-  for (int e = 0; e < 3; e++) {
-    if (elems[e]) {
-      for (int i = 0; i < cds[e]->totlayer; i++) {
-        CustomDataLayer *cdl = &cds[e]->layers[i];
+  for (int d = 0; d < 3; d++) {
+    if (elems[d]) {
+      for (int i = 0; i < cds[d]->totlayer; i++) {
+        CustomDataLayer *cdl = &cds[d]->layers[i];
 
         if (!(cdl->flag & CD_FLAG_EDIT_VISIBLITY)) {
           continue;
@@ -1584,7 +1584,7 @@ static void view3d_panel_geom_attr(const bContext *C, Panel *panel)
             continue;
         }
 
-        void *attr = BM_ELEM_CD_GET_VOID_P(elems[e], cdl->offset);
+        void *attr = BM_ELEM_CD_GET_VOID_P(elems[d], cdl->offset);
         PointerRNA attr_ptr;
         PointerRNA op_ptr;
         RNA_pointer_create(&me->id, srna, attr, &attr_ptr);
@@ -1616,6 +1616,7 @@ static void view3d_panel_geom_attr(const bContext *C, Panel *panel)
                     0,
                     &op_ptr);
         RNA_int_set(&op_ptr, "index", i);
+        RNA_int_set(&op_ptr, "domain", d);
       }
     }
   }
