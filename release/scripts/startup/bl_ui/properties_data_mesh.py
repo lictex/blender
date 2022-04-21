@@ -508,6 +508,7 @@ class MESH_UL_attributes(UIList):
         sub = split.row()
         sub.alignment = 'RIGHT'
         type = sub.row()
+        type.alignment = 'RIGHT'
         type.active = False
         type.label(text="%s ▶ %s" % (domain_name, data_type.name))
         show = sub.row()

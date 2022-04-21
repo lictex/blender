@@ -31,6 +31,7 @@
 
 #include "BKE_action.h"
 #include "BKE_armature.h"
+#include "BKE_attribute.h"
 #include "BKE_context.h"
 #include "BKE_curve.h"
 #include "BKE_customdata.h"
@@ -1478,21 +1479,34 @@ static bool view3d_panel_geom_attr_poll(const bContext *C, PanelType *UNUSED(pt)
   Object *ob = OBACT(view_layer);
   if (ob && ob->type == OB_MESH && BKE_object_is_in_editmode(ob)) {
     BMesh *bm = ((Mesh *)ob->data)->edit_mesh->bm;
-    BMElem *elems[] = {(BMElem *)BM_mesh_active_vert_get(bm),
-                       (BMElem *)BM_mesh_active_edge_get(bm),
-                       // BMesh might keep an active face even if selectmode is not face.
-                       bm->selectmode & SCE_SELECT_FACE ?
-                           (BMElem *)BM_mesh_active_face_get(bm, false, true) :
-                           NULL};
-    CustomData *cds[] = {&bm->vdata, &bm->edata, &bm->pdata};
-    // Check if any editable attribute exists.
-    for (int e = 0; e < 3; e++) {
-      if (elems[e]) {
-        for (int i = 0; i < cds[e]->totlayer; i++) {
-          CustomDataLayer *cdl = &cds[e]->layers[i];
-          if (cdl->flag & CD_FLAG_EDIT_VISIBLITY) {
-            return true;
-          }
+
+    BMElem *elem = BM_mesh_active_elem_get(bm);
+    // BMesh might keep an active face even if selection history is empty.
+    if (!elem && (bm->selectmode & SCE_SELECT_FACE)) {
+      elem = (BMElem *)BM_mesh_active_face_get(bm, false, true);
+    }
+
+    if (elem) {
+      CustomData *cd;
+      switch (elem->head.htype) {
+        case BM_VERT:
+          cd = &bm->vdata;
+          break;
+        case BM_EDGE:
+          cd = &bm->edata;
+          break;
+        case BM_FACE:
+          cd = &bm->pdata;
+          break;
+        default:
+          BLI_assert_unreachable();
+          break;
+      }
+
+      // Check if any editable attribute exists.
+      for (int i = 0; i < cd->totlayer; i++) {
+        if (cd->layers[i].flag & CD_FLAG_EDIT_VISIBLITY) {
+          return true;
         }
       }
     }
@@ -1510,114 +1524,131 @@ static void view3d_panel_geom_attr(const bContext *C, Panel *panel)
 
   UI_block_func_handle_set(block, do_view3d_geom_attr_buttons, NULL);
 
-  BMElem *elems[] = {(BMElem *)BM_mesh_active_vert_get(bm),
-                     (BMElem *)BM_mesh_active_edge_get(bm),
-                     // BMesh might keep an active face even if selectmode is not face.
-                     bm->selectmode & SCE_SELECT_FACE ?
-                         (BMElem *)BM_mesh_active_face_get(bm, false, true) :
-                         NULL};
-  CustomData *cds[] = {&bm->vdata, &bm->edata, &bm->pdata};
-  for (int d = 0; d < 3; d++) {
-    if (elems[d]) {
-      for (int i = 0; i < cds[d]->totlayer; i++) {
-        CustomDataLayer *cdl = &cds[d]->layers[i];
+  BMElem *elem = BM_mesh_active_elem_get(bm);
+  // BMesh might keep an active face even if selection history is empty.
+  if (!elem && (bm->selectmode & SCE_SELECT_FACE)) {
+    elem = (BMElem *)BM_mesh_active_face_get(bm, false, true);
+  }
 
-        if (!(cdl->flag & CD_FLAG_EDIT_VISIBLITY)) {
-          continue;
-        }
+  if (elem) {
+    CustomData *cd;
+    AttributeDomain domain;
+    switch (elem->head.htype) {
+      case BM_VERT:
+        cd = &bm->vdata;
+        domain = ATTR_DOMAIN_POINT;
+        break;
+      case BM_EDGE:
+        cd = &bm->edata;
+        domain = ATTR_DOMAIN_EDGE;
+        break;
+      case BM_FACE:
+        cd = &bm->pdata;
+        domain = ATTR_DOMAIN_FACE;
+        break;
+      default:
+        BLI_assert_unreachable();
+        break;
+    }
 
-        char prop[8];
-        void *srna;
-        bool expand = false;
-        float op_height = 1.0;
-        switch (cdl->type) {
-          case CD_PROP_FLOAT: {
-            srna = &RNA_FloatAttributeValue;
-            strcpy(prop, "value");
-            break;
-          }
-          case CD_PROP_FLOAT2: {
-            srna = &RNA_Float2AttributeValue;
-            strcpy(prop, "vector");
-            expand = true;
-            op_height = 2.0;
-            break;
-          }
-          case CD_PROP_FLOAT3: {
-            srna = &RNA_FloatVectorAttributeValue;
-            strcpy(prop, "vector");
-            expand = true;
-            op_height = 3.0;
-            break;
-          }
-          case CD_PROP_INT8: {
-            srna = &RNA_ByteIntAttributeValue;
-            strcpy(prop, "value");
-            break;
-          }
-          case CD_PROP_INT32: {
-            srna = &RNA_IntAttributeValue;
-            strcpy(prop, "value");
-            break;
-          }
-          case CD_PROP_BOOL: {
-            srna = &RNA_BoolAttributeValue;
-            strcpy(prop, "value");
-            break;
-          }
-          case CD_MLOOPCOL: {
-            srna = &RNA_ByteColorAttributeValue;
-            strcpy(prop, "color");
-            break;
-          }
-          case CD_PROP_COLOR: {
-            srna = &RNA_FloatColorAttributeValue;
-            strcpy(prop, "color");
-            break;
-          }
-          case CD_PROP_STRING: {
-            srna = &RNA_StringAttributeValue;
-            strcpy(prop, "value");
-            break;
-          }
-          default:
-            continue;
-        }
+    for (int i = 0; i < cd->totlayer; i++) {
+      CustomDataLayer *cdl = &cd->layers[i];
 
-        void *attr = BM_ELEM_CD_GET_VOID_P(elems[d], cdl->offset);
-        PointerRNA attr_ptr;
-        PointerRNA op_ptr;
-        RNA_pointer_create(&me->id, srna, attr, &attr_ptr);
-
-        if (expand) {
-          char label[65];
-          strcpy(label, cdl->name);
-          strcat(label, ":");
-          uiItemL(panel->layout, label, 0);
-        }
-        uiLayout *row = uiLayoutRow(panel->layout, true);
-
-        uiLayout *val_layout = expand ? uiLayoutColumn(row, true) : row;
-        uiItemR(val_layout,
-                &attr_ptr,
-                prop,
-                UI_ITEM_R_SPLIT_EMPTY_NAME | (expand ? UI_ITEM_R_EXPAND : 0),
-                expand ? "" : cdl->name,
-                ICON_NONE);
-
-        uiLayout *op_layout = uiLayoutRow(row, true);
-        uiLayoutSetScaleY(op_layout, op_height);
-        uiItemFullO(op_layout,
-                    "OBJECT_OT_geom_attribute_paste",
-                    "",
-                    ICON_PASTEDOWN,
-                    NULL,
-                    WM_OP_INVOKE_DEFAULT,
-                    0,
-                    &op_ptr);
-        RNA_int_set(&op_ptr, "index", i);
-        RNA_int_set(&op_ptr, "domain", d);
+      if (!(cdl->flag & CD_FLAG_EDIT_VISIBLITY)) {
+        continue;
       }
+
+      char prop[8];
+      void *srna;
+      bool expand = false;
+      float op_height = 1.0;
+      switch (cdl->type) {
+        case CD_PROP_FLOAT: {
+          srna = &RNA_FloatAttributeValue;
+          strcpy(prop, "value");
+          break;
+        }
+        case CD_PROP_FLOAT2: {
+          srna = &RNA_Float2AttributeValue;
+          strcpy(prop, "vector");
+          expand = true;
+          op_height = 2.0;
+          break;
+        }
+        case CD_PROP_FLOAT3: {
+          srna = &RNA_FloatVectorAttributeValue;
+          strcpy(prop, "vector");
+          expand = true;
+          op_height = 3.0;
+          break;
+        }
+        case CD_PROP_INT8: {
+          srna = &RNA_ByteIntAttributeValue;
+          strcpy(prop, "value");
+          break;
+        }
+        case CD_PROP_INT32: {
+          srna = &RNA_IntAttributeValue;
+          strcpy(prop, "value");
+          break;
+        }
+        case CD_PROP_BOOL: {
+          srna = &RNA_BoolAttributeValue;
+          strcpy(prop, "value");
+          break;
+        }
+        case CD_PROP_BYTE_COLOR: {
+          srna = &RNA_ByteColorAttributeValue;
+          strcpy(prop, "color");
+          break;
+        }
+        case CD_PROP_COLOR: {
+          srna = &RNA_FloatColorAttributeValue;
+          strcpy(prop, "color");
+          break;
+        }
+        case CD_PROP_STRING: {
+          srna = &RNA_StringAttributeValue;
+          strcpy(prop, "value");
+          break;
+        }
+        default:
+          continue;
+      }
+
+      void *attr = BM_ELEM_CD_GET_VOID_P(elem, cdl->offset);
+      PointerRNA attr_ptr;
+      PointerRNA op_ptr;
+      RNA_pointer_create(&me->id, srna, attr, &attr_ptr);
+
+      if (expand) {
+        char label[65];
+        strcpy(label, cdl->name);
+        strcat(label, ":");
+        uiItemL(panel->layout, label, 0);
+      }
+      uiLayout *row = uiLayoutRow(panel->layout, true);
+
+      uiLayout *val_layout = expand ? uiLayoutColumn(row, true) : row;
+      uiItemR(val_layout,
+              &attr_ptr,
+              prop,
+              UI_ITEM_R_SPLIT_EMPTY_NAME | (expand ? UI_ITEM_R_EXPAND : 0),
+              expand ? "" : cdl->name,
+              ICON_NONE);
+
+      uiLayout *op_layout = uiLayoutRow(row, true);
+      uiLayoutSetScaleY(op_layout, op_height);
+      uiItemFullO(op_layout,
+                  "OBJECT_OT_geom_attribute_paste",
+                  "",
+                  ICON_PASTEDOWN,
+                  NULL,
+                  WM_OP_INVOKE_DEFAULT,
+                  0,
+                  &op_ptr);
+      RNA_int_set(&op_ptr, "index", i);
+      RNA_int_set(&op_ptr, "domain", domain);
     }
   }
 }

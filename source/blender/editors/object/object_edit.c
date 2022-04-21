@@ -2155,21 +2155,34 @@ static bool geom_attribute_paste_poll(bContext *C)
   Object *ob = ED_object_context(C);
   if (ob && ob->type == OB_MESH && BKE_object_is_in_editmode(ob)) {
     BMesh *bm = ((Mesh *)ob->data)->edit_mesh->bm;
-    BMElem *elems[] = {(BMElem *)BM_mesh_active_vert_get(bm),
-                       (BMElem *)BM_mesh_active_edge_get(bm),
-                       // BMesh might keep an active face even if selectmode is not face.
-                       bm->selectmode & SCE_SELECT_FACE ?
-                           (BMElem *)BM_mesh_active_face_get(bm, false, true) :
-                           NULL};
-    CustomData *cds[] = {&bm->vdata, &bm->edata, &bm->pdata};
-    // Check if any editable attribute exists.
-    for (int e = 0; e < 3; e++) {
-      if (elems[e]) {
-        for (int i = 0; i < cds[e]->totlayer; i++) {
-          CustomDataLayer *cdl = &cds[e]->layers[i];
-          if (cdl->flag & CD_FLAG_EDIT_VISIBLITY) {
-            return true;
-          }
+
+    BMElem *elem = BM_mesh_active_elem_get(bm);
+    // BMesh might keep an active face even if selection history is empty.
+    if (!elem && (bm->selectmode & SCE_SELECT_FACE)) {
+      elem = (BMElem *)BM_mesh_active_face_get(bm, false, true);
+    }
+
+    if (elem) {
+      CustomData *cd;
+      switch (elem->head.htype) {
+        case BM_VERT:
+          cd = &bm->vdata;
+          break;
+        case BM_EDGE:
+          cd = &bm->edata;
+          break;
+        case BM_FACE:
+          cd = &bm->pdata;
+          break;
+        default:
+          BLI_assert_unreachable();
+          break;
+      }
+
+      // Check if any editable attribute exists.
+      for (int i = 0; i < cd->totlayer; i++) {
+        if (cd->layers[i].flag & CD_FLAG_EDIT_VISIBLITY) {
+          return true;
         }
       }
     }
