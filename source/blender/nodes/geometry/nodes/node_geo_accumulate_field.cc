@@ -153,7 +153,7 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
   }
   if (params.in_out() == SOCK_OUT) {
     params.add_item(
-        IFACE_("Leading"),
+        "Leading",
         [type](LinkSearchOpParams &params) {
           bNode &node = params.add_node("GeometryNodeAccumulateField");
           node_storage(node).data_type = *type;
@@ -161,7 +161,7 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
         },
         0);
     params.add_item(
-        IFACE_("Trailing"),
+        "Trailing",
         [type](LinkSearchOpParams &params) {
           bNode &node = params.add_node("GeometryNodeAccumulateField");
           node_storage(node).data_type = *type;
@@ -169,7 +169,7 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
         },
         -1);
     params.add_item(
-        IFACE_("Total"),
+        "Total",
         [type](LinkSearchOpParams &params) {
           bNode &node = params.add_node("GeometryNodeAccumulateField");
           node_storage(node).data_type = *type;
@@ -179,7 +179,7 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
   }
   else {
     params.add_item(
-        IFACE_("Value"),
+        "Value",
         [type](LinkSearchOpParams &params) {
           bNode &node = params.add_node("GeometryNodeAccumulateField");
           node_storage(node).data_type = *type;
@@ -188,7 +188,7 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
         0);
 
     params.add_item(
-        IFACE_("Group ID"),
+        "Group ID",
         [type](LinkSearchOpParams &params) {
           bNode &node = params.add_node("GeometryNodeAccumulateField");
           node_storage(node).data_type = *type;

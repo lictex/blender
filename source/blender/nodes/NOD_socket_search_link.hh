@@ -5,6 +5,7 @@
 #pragma once
 
 #include <functional>
+#include <optional>
 
 #include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
@@ -67,6 +68,8 @@ struct SocketLinkOperation {
   std::string name;
   LinkSocketFn fn;
   int weight = 0;
+  /* Use `IFACE_(name)` if this is empty. */
+  std::optional<std::string> translated_name;
 };
 
 class GatherLinkSearchOpParams {
@@ -116,7 +119,10 @@ class GatherLinkSearchOpParams {
    * itself, since it is temporary. That is why we tend to use the same variable name for this
    * class (`params`) that we do for the argument to `LinkSocketFn`.
    */
-  void add_item(std::string socket_name, SocketLinkOperation::LinkSocketFn fn, int weight = 0);
+  void add_item(std::string socket_name,
+                SocketLinkOperation::LinkSocketFn fn,
+                int weight = 0,
+                const char *msgctxt = nullptr);
 };
 
 /**

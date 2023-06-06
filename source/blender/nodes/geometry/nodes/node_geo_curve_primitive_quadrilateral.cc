@@ -143,17 +143,17 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
   else if (params.node_tree().typeinfo->validate_link(
                eNodeSocketDatatype(params.other_socket().type), SOCK_FLOAT))
   {
-    params.add_item(IFACE_("Width"),
+    params.add_item("Width",
                     SocketSearchOp{"Width", GEO_NODE_CURVE_PRIMITIVE_QUAD_MODE_RECTANGLE});
-    params.add_item(IFACE_("Height"),
+    params.add_item("Height",
                     SocketSearchOp{"Height", GEO_NODE_CURVE_PRIMITIVE_QUAD_MODE_RECTANGLE});
-    params.add_item(IFACE_("Bottom Width"),
+    params.add_item("Bottom Width",
                     SocketSearchOp{"Bottom Width", GEO_NODE_CURVE_PRIMITIVE_QUAD_MODE_TRAPEZOID});
-    params.add_item(IFACE_("Top Width"),
+    params.add_item("Top Width",
                     SocketSearchOp{"Top Width", GEO_NODE_CURVE_PRIMITIVE_QUAD_MODE_TRAPEZOID});
-    params.add_item(IFACE_("Offset"),
+    params.add_item("Offset",
                     SocketSearchOp{"Offset", GEO_NODE_CURVE_PRIMITIVE_QUAD_MODE_PARALLELOGRAM});
-    params.add_item(IFACE_("Point 1"),
+    params.add_item("Point 1",
                     SocketSearchOp{"Point 1", GEO_NODE_CURVE_PRIMITIVE_QUAD_MODE_POINTS});
   }
 }

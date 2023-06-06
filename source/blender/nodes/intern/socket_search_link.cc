@@ -18,13 +18,15 @@ namespace blender::nodes {
 
 void GatherLinkSearchOpParams::add_item(std::string socket_name,
                                         SocketLinkOperation::LinkSocketFn fn,
-                                        const int weight)
+                                        const int weight,
+                                        const char *msgctxt)
 {
 
-  std::string name = std::string(IFACE_(node_type_.ui_name)) + " " + UI_MENU_ARROW_SEP +
-                     socket_name;
+  std::string name = std::string(node_type_.ui_name) + " " + UI_MENU_ARROW_SEP + socket_name;
+  std::string translated_name = std::string(CTX_IFACE_(msgctxt, node_type_.ui_name)) + " " +
+                                UI_MENU_ARROW_SEP + IFACE_(socket_name.c_str());
 
-  items_.append({std::move(name), std::move(fn), weight});
+  items_.append({std::move(name), std::move(fn), weight, translated_name});
 }
 
 const bNodeSocket &GatherLinkSearchOpParams::other_socket() const
@@ -123,7 +125,7 @@ void search_link_ops_for_declarations(GatherLinkSearchOpParams &params,
      * sockets. */
     const int weight = (&socket == main_socket) ? 0 : -1 - i;
     params.add_item(
-        IFACE_(socket.name.c_str()),
+        socket.name.c_str(),
         [&node_type, &socket](LinkSearchOpParams &params) {
           bNode &node = params.add_node(node_type);
           socket.make_available(node);

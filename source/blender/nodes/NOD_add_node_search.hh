@@ -26,6 +26,8 @@ struct AddNodeItem {
   std::string description;
   int weight = 0;
   AddFn add_fn;
+  /* Use `IFACE_(ui_name)` if this is empty. */
+  std::optional<std::string> translated_ui_name;
 };
 
 class GatherAddNodeSearchParams {

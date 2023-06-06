@@ -73,7 +73,7 @@ static void search_items_for_asset_metadata(const bNodeTree &node_tree,
 
   const AssetRepresentation *asset = ED_asset_handle_get_representation(&asset_handle);
   params.add_single_node_item(
-      IFACE_(ED_asset_handle_get_name(&asset_handle)),
+      ED_asset_handle_get_name(&asset_handle),
       asset_data.description == nullptr ? "" : IFACE_(asset_data.description),
       [asset](const bContext &C, bNodeTree &node_tree, bNode &node) {
         Main &bmain = *CTX_data_main(&C);
@@ -190,7 +190,11 @@ static void add_node_search_update_fn(
   StringSearch *search = BLI_string_search_new();
 
   for (nodes::AddNodeItem &item : storage.search_add_items) {
-    BLI_string_search_add(search, item.ui_name.c_str(), &item, item.weight);
+    std::string name = item.translated_ui_name.value_or(IFACE_(item.ui_name.c_str()));
+    if (name != item.ui_name) {
+      name += " " + item.ui_name;
+    }
+    BLI_string_search_add(search, name.c_str(), &item, item.weight);
   }
 
   /* Don't filter when the menu is first opened, but still run the search
@@ -201,7 +205,8 @@ static void add_node_search_update_fn(
 
   for (const int i : IndexRange(filtered_amount)) {
     nodes::AddNodeItem &item = *filtered_items[i];
-    if (!UI_search_item_add(items, item.ui_name.c_str(), &item, ICON_NONE, 0, 0)) {
+    std::string name = item.translated_ui_name.value_or(IFACE_(item.ui_name.c_str()));
+    if (!UI_search_item_add(items, name.c_str(), &item, ICON_NONE, 0, 0)) {
       break;
     }
   }

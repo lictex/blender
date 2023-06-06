@@ -303,12 +303,12 @@ static void gather_socket_link_operations(const bContext &C,
   }
   NODE_TYPES_END;
 
-  search_link_ops.append({IFACE_("Reroute"), add_reroute_node_fn});
+  search_link_ops.append({"Reroute", add_reroute_node_fn});
 
   const bool is_node_group = !(node_tree.id.flag & LIB_EMBEDDED_DATA);
 
   if (is_node_group && socket.in_out == SOCK_IN) {
-    search_link_ops.append({IFACE_("Group Input"), add_group_input_node_fn});
+    search_link_ops.append({"Group Input", add_group_input_node_fn});
 
     int weight = -1;
     LISTBASE_FOREACH (const bNodeSocket *, interface_socket, &node_tree.inputs) {
@@ -317,12 +317,14 @@ static void gather_socket_link_operations(const bContext &C,
       if (node_tree.typeinfo->validate_link && !node_tree.typeinfo->validate_link(from, to)) {
         continue;
       }
-      search_link_ops.append(
-          {std::string(IFACE_("Group Input")) + " " + UI_MENU_ARROW_SEP + interface_socket->name,
-           [interface_socket](nodes::LinkSearchOpParams &params) {
-             add_existing_group_input_fn(params, *interface_socket);
-           },
-           weight});
+      search_link_ops.append({
+          std::string("Group Input") + " " + UI_MENU_ARROW_SEP + interface_socket->name,
+          [interface_socket](nodes::LinkSearchOpParams &params) {
+            add_existing_group_input_fn(params, *interface_socket);
+          },
+          weight,
+          std::string(IFACE_("Group Input")) + " " + UI_MENU_ARROW_SEP + interface_socket->name,
+      });
       weight--;
     }
   }
@@ -344,7 +346,11 @@ static void link_drag_search_update_fn(
   StringSearch *search = BLI_string_search_new();
 
   for (SocketLinkOperation &op : storage.search_link_ops) {
-    BLI_string_search_add(search, op.name.c_str(), &op, op.weight);
+    std::string name = op.translated_name.value_or(IFACE_(op.name.c_str()));
+    if (name != op.name) {
+      name += " " + op.name;
+    }
+    BLI_string_search_add(search, name.c_str(), &op, op.weight);
   }
 
   /* Don't filter when the menu is first opened, but still run the search
@@ -355,7 +361,8 @@ static void link_drag_search_update_fn(
 
   for (const int i : IndexRange(filtered_amount)) {
     SocketLinkOperation &item = *filtered_items[i];
-    if (!UI_search_item_add(items, item.name.c_str(), &item, ICON_NONE, 0, 0)) {
+    std::string name = item.translated_name.value_or(IFACE_(item.name.c_str()));
+    if (!UI_search_item_add(items, name.c_str(), &item, ICON_NONE, 0, 0)) {
       break;
     }
   }

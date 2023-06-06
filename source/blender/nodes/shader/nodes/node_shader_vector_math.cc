@@ -65,14 +65,12 @@ static void sh_node_vector_math_gather_link_searches(GatherLinkSearchOpParams &p
                                                 NODE_VECTOR_MATH_DISTANCE,
                                                 NODE_VECTOR_MATH_DOT_PRODUCT))
       {
-        params.add_item(IFACE_(item->name),
-                        SocketSearchOp{"Value", (NodeVectorMathOperation)item->value},
-                        weight);
+        params.add_item(
+            item->name, SocketSearchOp{"Value", (NodeVectorMathOperation)item->value}, weight);
       }
       else {
-        params.add_item(IFACE_(item->name),
-                        SocketSearchOp{"Vector", (NodeVectorMathOperation)item->value},
-                        weight);
+        params.add_item(
+            item->name, SocketSearchOp{"Vector", (NodeVectorMathOperation)item->value}, weight);
       }
     }
   }

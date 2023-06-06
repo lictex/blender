@@ -42,8 +42,7 @@ void GatherAddNodeSearchParams::add_item(AddNodeItem item)
 
 void search_node_add_ops_for_basic_node(GatherAddNodeSearchParams &params)
 {
-  params.add_single_node_item(IFACE_(params.node_type().ui_name),
-                              TIP_(params.node_type().ui_description));
+  params.add_single_node_item(params.node_type().ui_name, params.node_type().ui_description);
 }
 
 }  // namespace blender::nodes
